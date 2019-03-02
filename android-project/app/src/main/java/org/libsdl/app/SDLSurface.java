@@ -30,6 +30,9 @@ import android.view.WindowManager;
 public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     View.OnKeyListener, View.OnTouchListener, SensorEventListener  {
 
+    public static int fixedWidth = 0;
+    public static int fixedHeight = 0;
+
     // Sensors
     protected SensorManager mSensorManager;
     protected Display mDisplay;
@@ -43,6 +46,9 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     // Startup
     public SDLSurface(Context context) {
         super(context);
+        if (fixedWidth > 0) {
+            getHolder().setFixedSize(fixedWidth, fixedHeight);
+        }
         getHolder().addCallback(this);
 
         setFocusable(true);
@@ -61,6 +67,30 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         mHeight = 1.0f;
 
         mIsSurfaceReady = false;
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int widthSize = MeasureSpec.getSize(widthMeasureSpec);
+        int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+
+        if (fixedWidth > 0) {
+            float myAspect = 1.0f * fixedWidth / fixedHeight;
+            float resultWidth = widthSize;
+            float resultHeight = resultWidth / myAspect;
+            if (resultHeight > heightSize) {
+                resultHeight = heightSize;
+                resultWidth = resultHeight * myAspect;
+            }
+
+            mWidth = resultWidth;
+            mHeight = resultHeight;
+            setMeasuredDimension((int) resultWidth, (int) resultHeight);
+        } else {
+            mWidth = widthSize;
+            mHeight = heightSize;
+            setMeasuredDimension(widthSize, heightSize);
+        }
     }
 
     public void handlePause() {
@@ -110,8 +140,6 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
             return;
         }
 
-        mWidth = width;
-        mHeight = height;
         int nDeviceWidth = width;
         int nDeviceHeight = height;
         try
