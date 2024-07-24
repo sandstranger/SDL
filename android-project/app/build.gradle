@@ -1,32 +1,23 @@
-def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
-def buildAsApplication = !buildAsLibrary
-if (buildAsApplication) {
-    apply plugin: 'com.android.application'
-}
-else {
-    apply plugin: 'com.android.library'
-}
+apply plugin: 'com.android.library'
 
 android {
-    if (buildAsApplication) {
-        namespace "org.libsdl.app"
-    }
-    compileSdkVersion 34
+    namespace "org.libsdl.app"
+    compileSdkVersion versions.target_sdk
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 34
-        versionCode 1
-        versionName "1.0"
+        minSdkVersion versions.min_sdk
+        targetSdkVersion versions.target_sdk
+        versionCode versions.app_version_code
+        versionName versions.app_version
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters = abi_filters
+        }
         externalNativeBuild {
             ndkBuild {
-                arguments "APP_PLATFORM=android-19"
-                abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+                arguments build_flags.ndk_build_args
+                cFlags  = build_flags.common_c_flags
+                cppFlags = build_flags.common_cpp_flags
             }
-            // cmake {
-            //     arguments "-DANDROID_APP_PLATFORM=android-19", "-DANDROID_STL=c++_static"
-            //     // abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
-            //     abiFilters 'arm64-v8a'
-            // }
         }
     }
     buildTypes {
@@ -35,41 +26,18 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    applicationVariants.all { variant ->
-        tasks["merge${variant.name.capitalize()}Assets"]
-            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
-    }
-    if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
-        sourceSets.main {
-            jniLibs.srcDir 'libs'
+    externalNativeBuild {
+        ndkBuild {
+            path "$rootDir/sdl2/Android.mk"
         }
-        externalNativeBuild {
-            ndkBuild {
-                path 'jni/Android.mk'
-            }
-            // cmake {
-            //     path 'jni/CMakeLists.txt'
-            // }
-        }
-       
     }
-    lint {
+    lintOptions {
         abortOnError false
     }
-
-    if (buildAsLibrary) {
-        libraryVariants.all { variant ->
-            variant.outputs.each { output ->
-                def outputFile = output.outputFile
-                if (outputFile != null && outputFile.name.endsWith(".aar")) {
-                    def fileName = "org.libsdl.app.aar";
-                    output.outputFile = new File(outputFile.parent, fileName);
-                }
-            }
-        }
+    buildToolsVersion versions.build_tools_version
+    ndkVersion versions.ndk_version
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
-}
-
-dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
 }
