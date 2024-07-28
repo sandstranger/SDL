@@ -3489,25 +3489,25 @@ int SDL_GL_LoadLibrary(const char *path)
     return retval;
 }
 
+static void * handle = NULL;
+
 void *SDL_GL_GetProcAddress(const char *proc)
 {
-    void *func;
+    static char procname[1024];
+    void *retval;
 
-    if (!_this) {
-        SDL_UninitializedVideo();
-        return NULL;
+    if (handle == NULL){
+
+        handle = SDL_LoadObject ("libGL.so");
     }
-    func = NULL;
-    if (_this->GL_GetProcAddress) {
-        if (_this->gl_config.driver_loaded) {
-            func = _this->GL_GetProcAddress(_this, proc);
-        } else {
-            SDL_SetError("No GL driver has been loaded");
-        }
-    } else {
-        SDL_SetError("No dynamic GL support in current SDL video driver (%s)", _this->name);
+
+    retval = SDL_LoadFunction(handle, proc);
+    if (!retval && SDL_strlen(proc) <= 1022) {
+        procname[0] = '_';
+        SDL_strlcpy(procname + 1, proc, 1022);
+        retval = SDL_LoadFunction(handle, procname);
     }
-    return func;
+    return retval;
 }
 
 void SDL_GL_UnloadLibrary(void)
