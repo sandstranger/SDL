@@ -1,3 +1,7 @@
+plugins {
+    alias(libs.plugins.jetbrains.kotlin.android)
+}
+
 apply plugin: 'com.android.library'
 
 android {
@@ -40,8 +44,16 @@ android {
     }
     buildToolsVersion versions.build_tools_version
     ndkVersion versions.ndk_version
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+dependencies {
+    implementation libs.kotlin.stdlib
+    implementation libs.kotlinx.coroutines.core
 }
