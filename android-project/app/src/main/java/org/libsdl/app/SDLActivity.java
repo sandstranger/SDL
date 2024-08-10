@@ -1231,6 +1231,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         @Override
         public void run() {
+            /*
             RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
             params.leftMargin = x;
             params.topMargin = y;
@@ -1248,6 +1249,26 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
             InputMethodManager imm = (InputMethodManager) SDL.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.showSoftInput(mTextEdit, 0);
+
+            mScreenKeyboardShown = true;*/
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setTitle("Virtual input");
+
+            final EditText input = new EditText(getContext());
+            builder.setView(input);
+
+            builder.setPositiveButton("OK", (dialog, which) -> {
+                mScreenKeyboardShown = false;
+                String text = input.getText().toString();
+                SDLInputConnection.nativeCommitText(text, 0);
+            });
+            builder.setNegativeButton("Cancel", (dialog, which) -> {
+                mScreenKeyboardShown = false;
+                dialog.cancel();
+            });
+
+            builder.show();
 
             mScreenKeyboardShown = true;
         }
