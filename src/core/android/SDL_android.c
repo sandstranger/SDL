@@ -118,6 +118,10 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeMouse)(
     JNIEnv *env, jclass jcls,
     jint button, jint action, jfloat x, jfloat y, jboolean relative);
 
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onVirtualMouse)(
+    JNIEnv *env, jclass jcls,
+    jint button, jint action);
+
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeAccel)(
     JNIEnv *env, jclass jcls,
     jfloat x, jfloat y, jfloat z);
@@ -186,6 +190,7 @@ static JNINativeMethod SDLActivity_tab[] = {
     { "onNativeKeyboardFocusLost", "()V", SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost) },
     { "onNativeTouch", "(IIIFFF)V", SDL_JAVA_INTERFACE(onNativeTouch) },
     { "onNativeMouse", "(IIFFZ)V", SDL_JAVA_INTERFACE(onNativeMouse) },
+    { "onVirtualMouse", "(II)V", SDL_JAVA_INTERFACE(onVirtualMouse) },
     { "onNativeAccel", "(FFF)V", SDL_JAVA_INTERFACE(onNativeAccel) },
     { "onNativeClipboardChanged", "()V", SDL_JAVA_INTERFACE(onNativeClipboardChanged) },
     { "nativeLowMemory", "()V", SDL_JAVA_INTERFACE(nativeLowMemory) },
@@ -1172,6 +1177,16 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeMouse)(
     SDL_LockMutex(Android_ActivityMutex);
 
     Android_OnMouse(Android_Window, button, action, x, y, relative);
+
+    SDL_UnlockMutex(Android_ActivityMutex);
+}
+
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onVirtualMouse)(
+    JNIEnv *env, jclass jcls,jint button, jint action)
+{
+    SDL_LockMutex(Android_ActivityMutex);
+
+    Android_OnVirtualMouse(Android_Window, button, action);
 
     SDL_UnlockMutex(Android_ActivityMutex);
 }

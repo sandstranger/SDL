@@ -251,6 +251,28 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
     }
 }
 
+
+void Android_OnVirtualMouse(SDL_Window *window, int state, int action)
+{
+    if (!window) {
+        return;
+    }
+
+
+    switch (action) {
+    case ACTION_DOWN:
+        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_PRESSED, state);
+        break;
+
+    case ACTION_UP:
+        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_RELEASED, state);
+        break;
+
+    default:
+        break;
+    }
+}
+
 #endif /* SDL_VIDEO_DRIVER_ANDROID */
 
 /* vi: set ts=4 sw=4 expandtab: */
