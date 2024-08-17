@@ -1263,8 +1263,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
                 mScreenKeyboardShown = false;
                 String text = input.getText().toString();
                 SDLInputConnection.nativeCommitText(text, 0);
-                SDLActivity.onNativeKeyDown(KeyEvent.KEYCODE_ENTER);
-                SDLActivity.onNativeKeyUp(KeyEvent.KEYCODE_ENTER);
+                InputKt.onKeyDown(KeyEvent.KEYCODE_ENTER, 200);
             });
             builder.setNegativeButton("Cancel", (dialog, which) -> {
                 mScreenKeyboardShown = false;
