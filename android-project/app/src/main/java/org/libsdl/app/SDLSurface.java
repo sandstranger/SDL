@@ -38,7 +38,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     protected Display mDisplay;
 
     // Keep track of the surface size to normalize touch events
-    public static float mWidth, mHeight;
+    private float mWidth, mHeight;
 
     // Is SurfaceView ready for rendering
     public boolean mIsSurfaceReady;
