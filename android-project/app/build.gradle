@@ -10,8 +10,6 @@ android {
     defaultConfig {
         minSdkVersion versions.min_sdk
         targetSdkVersion versions.target_sdk
-        versionCode versions.app_version_code
-        versionName versions.app_version
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters = abi_filters
@@ -31,7 +29,6 @@ android {
         }
         debug {
             jniDebuggable true
-            debuggable true
         }
     }
     externalNativeBuild {
