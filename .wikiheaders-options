@@ -3,7 +3,7 @@ projectshortname = SDL
 incsubdir = include
 wikisubdir = SDL2
 readmesubdir = docs
-apiprefixregex = (SDL_|SDLK_|KMOD_|AUDIO_)
+apiprefixregex = (SDL_|SDLK_|KMOD_|AUDIO_|[US]int\d+)
 mainincludefname = SDL.h
 versionfname = include/SDL_version.h
 versionmajorregex = \A\#define\s+SDL_MAJOR_VERSION\s+(\d+)\Z
@@ -14,7 +14,7 @@ projecturl = https://libsdl.org/
 wikiurl = https://wiki.libsdl.org/SDL2
 bugreporturl = https://github.com/libsdl-org/sdlwiki/issues/new
 warn_about_missing = 0
-wikipreamble = (This is the legacy documentation for stable SDL2, the current stable version; [SDL3](https://wiki.libsdl.org/SDL3/) is the current development version.)
+wikipreamble = (This is the legacy documentation for SDL2, the previous stable version; [SDL3](https://wiki.libsdl.org/SDL3/) is the current stable version.)
 wikiheaderfiletext = Defined in [%fname%](https://github.com/libsdl-org/SDL/blob/SDL2/include/%fname%)
 manpageheaderfiletext = Defined in %fname%
 
