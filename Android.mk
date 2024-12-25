@@ -7,6 +7,8 @@ LOCAL_PATH := $(call my-dir)
 ###########################
 
 include $(CLEAR_VARS)
+LOCAL_SHORT_COMMANDS := true
+APP_SHORT_COMMANDS := true
 
 LOCAL_MODULE := SDL3
 
@@ -98,9 +100,9 @@ LOCAL_CFLAGS += \
 	-Wkeyword-macro \
 
 # Warnings we haven't fixed (yet)
-LOCAL_CFLAGS += -Wno-unused-parameter -Wno-sign-compare
+LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare
 
-LOCAL_CXXFLAGS += -std=gnu++11
+LOCAL_CXXFLAGS += -O3 -std=gnu++11
 
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
 
