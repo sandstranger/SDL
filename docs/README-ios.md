@@ -120,14 +120,6 @@ e.g.
 Note that if you are using main callbacks instead of a standard C main() function, your SDL_AppEvent() callback will run as these events arrive and you do not need to use SDL_SetEventFilter.
 
 
-Notes -- Accelerometer as Joystick
-==============================================================================
-
-SDL for iPhone supports polling the built in accelerometer as a joystick device.  For an example on how to do this, see the accelerometer.c in the demos directory.
-
-The main thing to note when using the accelerometer with SDL is that while the iPhone natively reports accelerometer as floating point values in units of g-force, SDL_GetJoystickAxis() reports joystick values as signed integers.  Hence, in order to convert between the two, some clamping and scaling is necessary on the part of the iPhone SDL joystick driver.  To convert SDL_GetJoystickAxis() reported values BACK to units of g-force, simply multiply the values by SDL_IPHONE_MAX_GFORCE / 0x7FFF.
-
-
 Notes -- Keyboard
 ==============================================================================
 
@@ -139,7 +131,7 @@ void SDL_StartTextInput()
 void SDL_StopTextInput()
 	-- disables text events and hides the onscreen keyboard.
 
-SDL_bool SDL_TextInputActive()
+bool SDL_TextInputActive()
 	-- returns whether or not text events are enabled (and the onscreen keyboard is visible)
 
 
@@ -147,6 +139,8 @@ Notes -- Mouse
 ==============================================================================
 
 iOS now supports Bluetooth mice on iPad, but by default will provide the mouse input as touch. In order for SDL to see the real mouse events, you should set the key UIApplicationSupportsIndirectInputEvents to true in your Info.plist
+
+From iOS 17 onward, the key now defaults to true.
 
 
 Notes -- Reading and Writing files
@@ -225,7 +219,7 @@ Game Center
 
 Game Center integration might require that you break up your main loop in order to yield control back to the system. In other words, instead of running an endless main loop, you run each frame in a callback function, using:
 
-    int SDL_SetiOSAnimationCallback(SDL_Window * window, int interval, SDL_iOSAnimationCallback callback, void *callbackParam);
+    bool SDL_SetiOSAnimationCallback(SDL_Window * window, int interval, SDL_iOSAnimationCallback callback, void *callbackParam);
 
 This will set up the given function to be called back on the animation callback, and then you have to return from main() to let the Cocoa event loop run.
 

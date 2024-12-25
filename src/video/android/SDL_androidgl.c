@@ -22,12 +22,13 @@
 
 #if defined(SDL_VIDEO_DRIVER_ANDROID) && defined(SDL_VIDEO_OPENGL_EGL)
 
-/* Android SDL video driver implementation */
+// Android SDL video driver implementation
 
 #include "../SDL_egl_c.h"
 #include "SDL_androidwindow.h"
 
 #include "SDL_androidvideo.h"
+#include "SDL_androidevents.h"
 #include "SDL_androidgl.h"
 #include "../../core/android/SDL_android.h"
 
@@ -35,7 +36,7 @@
 
 #include <dlfcn.h>
 
-int Android_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context)
+bool Android_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context)
 {
     if (window && context) {
         return SDL_EGL_MakeCurrent(_this, window->internal->egl_surface, context);
@@ -46,20 +47,22 @@ int Android_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLC
 
 SDL_GLContext Android_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_GLContext ret;
+    SDL_GLContext result;
 
-    Android_LockActivityMutexOnceRunning();
+    if (!Android_WaitActiveAndLockActivity()) {
+        return NULL;
+    }
 
-    ret = SDL_EGL_CreateContext(_this, window->internal->egl_surface);
+    result = SDL_EGL_CreateContext(_this, window->internal->egl_surface);
 
     Android_UnlockActivityMutex();
 
-    return ret;
+    return result;
 }
 
-int Android_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
+bool Android_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    int retval;
+    bool result;
 
     Android_LockActivityMutex();
 
@@ -70,16 +73,16 @@ int Android_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /*_this->egl_data->eglWaitNative(EGL_CORE_NATIVE_ENGINE);
     _this->egl_data->eglWaitGL();*/
-    retval = SDL_EGL_SwapBuffers(_this, window->internal->egl_surface);
+    result = SDL_EGL_SwapBuffers(_this, window->internal->egl_surface);
 
     Android_UnlockActivityMutex();
 
-    return retval;
+    return result;
 }
 
-int Android_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path)
+bool Android_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
     return SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType)0, 0);
 }
 
-#endif /* SDL_VIDEO_DRIVER_ANDROID */
+#endif // SDL_VIDEO_DRIVER_ANDROID

@@ -40,7 +40,7 @@
     if (self) {
         clicked = -1;
 
-        /* Retain the NSWindow because we'll show the alert later on the main thread */
+        // Retain the NSWindow because we'll show the alert later on the main thread
         if (window) {
             nswindow = ((__bridge SDL_CocoaWindowData *)window->internal).nswindow;
         } else {
@@ -66,7 +66,7 @@
 }
 @end
 
-static void Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonID, int *returnValue)
+static void Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonID, bool *result)
 {
     NSAlert *alert;
     const SDL_MessageBoxButtonData *buttons = messageboxdata->buttons;
@@ -119,27 +119,27 @@ static void Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, i
             clicked = messageboxdata->numbuttons - 1 - clicked;
         }
         *buttonID = buttons[clicked].buttonID;
-        *returnValue = 0;
+        *result = true;
     } else {
-        *returnValue = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
+        *result = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
     }
 }
 
-/* Display a Cocoa message box */
-int Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
+// Display a Cocoa message box
+bool Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
     @autoreleasepool {
-        __block int returnValue = 0;
+        __block bool result = 0;
 
         if ([NSThread isMainThread]) {
-            Cocoa_ShowMessageBoxImpl(messageboxdata, buttonID, &returnValue);
+            Cocoa_ShowMessageBoxImpl(messageboxdata, buttonID, &result);
         } else {
             dispatch_sync(dispatch_get_main_queue(), ^{
-              Cocoa_ShowMessageBoxImpl(messageboxdata, buttonID, &returnValue);
+              Cocoa_ShowMessageBoxImpl(messageboxdata, buttonID, &result);
             });
         }
-        return returnValue;
+        return result;
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_COCOA */
+#endif // SDL_VIDEO_DRIVER_COCOA

@@ -23,6 +23,12 @@
  * # CategoryLocale
  *
  * SDL locale services.
+ *
+ * This provides a way to get a list of preferred locales (language plus
+ * country) for the user. There is exactly one function:
+ * SDL_GetPreferredLocales(), which handles all the heavy lifting, and offers
+ * documentation on all the strange ways humans might have configured their
+ * language settings.
  */
 
 #ifndef SDL_locale_h
@@ -47,7 +53,7 @@ extern "C" {
  * would be "en"), and the country, if not NULL, will be an ISO-3166 country
  * code (so Canada would be "CA").
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_GetPreferredLocales
  */
@@ -89,17 +95,16 @@ typedef struct SDL_Locale
  * if possible, and you can call this function again to get an updated copy of
  * preferred locales.
  *
- * This returns temporary memory which will be automatically freed later, and
- * can be claimed with SDL_ClaimTemporaryMemory().
- *
  * \param count a pointer filled in with the number of locales returned, may
  *              be NULL.
  * \returns a NULL terminated array of locale pointers, or NULL on failure;
- *          call SDL_GetError() for more information.
+ *          call SDL_GetError() for more information. This is a single
+ *          allocation that should be freed with SDL_free() when it is no
+ *          longer needed.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  */
-extern SDL_DECLSPEC const SDL_Locale * const * SDLCALL SDL_GetPreferredLocales(int *count);
+extern SDL_DECLSPEC SDL_Locale ** SDLCALL SDL_GetPreferredLocales(int *count);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

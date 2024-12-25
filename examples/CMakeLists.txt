@@ -23,12 +23,6 @@ if(NOT (MSVC AND SDL_CPU_ARM64))
     find_package(OpenGL)
 endif()
 
-if(WINDOWS_STORE)
-    cmake_minimum_required(VERSION 3.19)
-    # CMP0112: Target file component generator expressions do not add target dependencies.
-    cmake_policy(SET CMP0112 NEW)
-endif()
-
 set(SDL_EXAMPLE_EXECUTABLES)
 
 if(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
@@ -43,6 +37,8 @@ if(NOT CMAKE_VERSION VERSION_LESS 3.20)
     get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
     set(example_bin_dir "${example_bin_dir}$<$<BOOL:${is_multi_config}>:/$<CONFIG>>")
 endif()
+
+file(GLOB RESOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/*.bmp ${CMAKE_CURRENT_SOURCE_DIR}/../test/*.wav ${CMAKE_CURRENT_SOURCE_DIR}/../test/*.hex)
 
 set(RESOURCE_FILE_NAMES)
 set(RESOURCE_FILES_BINDIR)
@@ -60,17 +56,8 @@ add_custom_target(copy-sdl-example-resources
     DEPENDS "${RESOURCE_FILES_BINDIR}"
 )
 
-if(WINDOWS_STORE)
-    add_library(sdl_example_main_callbacks_uwp OBJECT ../test/main.cpp)
-    target_link_libraries(sdl_example_main_callbacks_uwp PRIVATE SDL3::Headers)
-    target_compile_options(sdl_example_main_callbacks_uwp PRIVATE "/ZW")
-    target_compile_definitions(sdl_example_main_callbacks_uwp PRIVATE "SDL_MAIN_USE_CALLBACKS")
-
-    set_source_files_properties(${RESOURCE_FILES} PROPERTIES VS_DEPLOYENT_LOCATION "Assets")
-endif()
-
 macro(add_sdl_example_executable TARGET)
-    cmake_parse_arguments(AST "BUILD_DEPENDENT;NEEDS_RESOURCES;" "" "SOURCES" ${ARGN})
+    cmake_parse_arguments(AST "BUILD_DEPENDENT" "" "SOURCES;DATAFILES" ${ARGN})
     if(AST_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "Unknown argument(s): ${AST_UNPARSED_ARGUMENTS}")
     endif()
@@ -78,30 +65,8 @@ macro(add_sdl_example_executable TARGET)
         message(FATAL_ERROR "add_sdl_example_executable needs at least one source")
     endif()
     set(EXTRA_SOURCES "")
-    if(WINDOWS_STORE)
-        set(uwp_bindir "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.dir")
-        if(NOT IS_DIRECTORY "${uwp_bindir}")
-            execute_process(COMMAND "${CMAKE_COMMAND}" -E make_directory "${uwp_bindir}")
-        endif()
-        string(REGEX REPLACE "[_]" "" SAFE_TARGET "${TARGET}")
-        file(GENERATE OUTPUT "${uwp_bindir}/${TARGET}.appxmanifest"
-            INPUT "${CMAKE_CURRENT_SOURCE_DIR}/../test/uwp/Package.appxmanifest.in"
-            TARGET "${TARGET}"
-        )
-        set_property(SOURCE "${uwp_bindir}/${TARGET}.appxmanifest" PROPERTY VS_DEPLOYMENT_CONTENT 1)
-
-        list(APPEND EXTRA_SOURCES "$<TARGET_OBJECTS:sdl_example_main_callbacks_uwp>")
-
-        list(APPEND EXTRA_SOURCES
-            "${uwp_bindir}/${TARGET}.appxmanifest"
-            "../test/uwp/logo-50x50.png"
-            "../test/uwp/square-44x44.png"
-            "../test/uwp/square-150x150.png"
-            "../test/uwp/splash-620x300.png"
-        )
-    endif()
-    if(AST_NEEDS_RESOURCES)
-        list(APPEND EXTRA_SOURCES ${RESOURCE_FILES})
+    if(AST_DATAFILES)
+        list(APPEND EXTRA_SOURCES ${DATAFILES})
     endif()
     if(ANDROID)
         add_library(${TARGET} SHARED ${AST_SOURCES} ${EXTRA_SOURCES})
@@ -113,35 +78,27 @@ macro(add_sdl_example_executable TARGET)
     target_link_libraries(${TARGET} PRIVATE SDL3::${sdl_name_component})
 
     list(APPEND SDL_EXAMPLE_EXECUTABLES ${TARGET})
-    if(AST_NEEDS_RESOURCES)
+    if(AST_DATAFILES)
         if(PSP OR PS2)
             add_custom_command(TARGET ${TARGET} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} ARGS -E make_directory $<TARGET_FILE_DIR:${TARGET}>/sdl-${TARGET}
-                COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${RESOURCE_FILES} $<TARGET_FILE_DIR:${TARGET}>/sdl-${TARGET})
-        elseif(WINDOWS_STORE)
-            # MSVC does build the dependent targets (or POST_BUILD commands) when building an application
-            # after starting to debug. By copying the resources in a custom target, the files can be copied afterwards.
-            # FIXME: find out proper way to add assets to UWP package
-            cmake_minimum_required(VERSION 3.19)
-            add_custom_target(zzz-resources-copy-${TARGET}
-                COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/AppX"
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RESOURCE_FILES} "$<TARGET_FILE_DIR:${TARGET}>/AppX"
+                COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${AST_DATAFILES} $<TARGET_FILE_DIR:${TARGET}>/sdl-${TARGET}
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             )
-            add_dependencies(${TARGET} zzz-resources-copy-${TARGET})
         else()
             add_dependencies(${TARGET} copy-sdl-example-resources)
         endif()
         if(APPLE)
             # Make sure resource files get installed into macOS/iOS .app bundles.
-            set_target_properties(${TARGET} PROPERTIES RESOURCE "${RESOURCE_FILES}")
+            set_target_properties(${TARGET} PROPERTIES RESOURCE "${AST_DATAFILES}")
         endif()
         if(EMSCRIPTEN)
-            foreach(res IN LISTS RESOURCE_FILES)
+            foreach(res IN LISTS AST_DATAFILES)
                 get_filename_component(res_name "${res}" NAME)
                 target_link_options(${TARGET} PRIVATE "SHELL:--embed-file ${res}@${res_name}")
             endforeach()
         endif()
-        set_property(TARGET ${TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:${TARGET}>/$<JOIN:${RESOURCE_FILE_NAMES},$<SEMICOLON>$<TARGET_FILE_DIR:${TARGET}>/>")
+        set_property(TARGET ${TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:${TARGET}>/$<JOIN:${AST_DATAFILES},$<SEMICOLON>$<TARGET_FILE_DIR:${TARGET}>/>")
     endif()
 
     if(WINDOWS)
@@ -151,21 +108,9 @@ macro(add_sdl_example_executable TARGET)
         endif()
     elseif(PSP)
         target_link_libraries(${TARGET} PRIVATE GL)
-    endif()
-    if(WINDOWS_STORE)
-        target_compile_definitions(${TARGET} PRIVATE "SDL_MAIN_NOIMPL")
-        set_property(TARGET ${TARGET} PROPERTY WIN32_EXECUTABLE TRUE)
-        set_property(TARGET ${TARGET} PROPERTY RUNTIME_OUTPUT_DIRECTORY "${uwp_bindir}")
-        target_link_options(${TARGET} PRIVATE
-            -nodefaultlib:vccorlib$<$<CONFIG:Debug>:d>
-            -nodefaultlib:msvcrt$<$<CONFIG:Debug>:d>
-            vccorlib$<$<CONFIG:Debug>:d>.lib
-            msvcrt$<$<CONFIG:Debug>:d>.lib
-        )
-    endif()
-
-    if(EMSCRIPTEN)
+    elseif(EMSCRIPTEN)
         set_property(TARGET ${TARGET} PROPERTY SUFFIX ".html")
+        target_link_options(${TARGET} PRIVATE -sALLOW_MEMORY_GROWTH=1)
     endif()
 
     if(OPENGL_FOUND)
@@ -176,11 +121,45 @@ macro(add_sdl_example_executable TARGET)
     target_include_directories(${TARGET} PRIVATE "$<TARGET_PROPERTY:SDL3::${sdl_name_component},INCLUDE_DIRECTORIES>")
 endmacro()
 
-add_sdl_example_executable(renderer-clear SOURCES renderer/01-clear/renderer-clear.c)
-add_sdl_example_executable(renderer-primitives SOURCES renderer/02-primitives/renderer-primitives.c)
+add_sdl_example_executable(renderer-clear SOURCES renderer/01-clear/clear.c)
+add_sdl_example_executable(renderer-primitives SOURCES renderer/02-primitives/primitives.c)
+add_sdl_example_executable(renderer-lines SOURCES renderer/03-lines/lines.c)
+add_sdl_example_executable(renderer-points SOURCES renderer/04-points/points.c)
+add_sdl_example_executable(renderer-rectangles SOURCES renderer/05-rectangles/rectangles.c)
+add_sdl_example_executable(renderer-textures SOURCES renderer/06-textures/textures.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-streaming-textures SOURCES renderer/07-streaming-textures/streaming-textures.c)
+add_sdl_example_executable(renderer-rotating-textures SOURCES renderer/08-rotating-textures/rotating-textures.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-scaling-textures SOURCES renderer/09-scaling-textures/scaling-textures.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-geometry SOURCES renderer/10-geometry/geometry.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-color-mods SOURCES renderer/11-color-mods/color-mods.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-viewport SOURCES renderer/14-viewport/viewport.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-cliprect SOURCES renderer/15-cliprect/cliprect.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-read-pixels SOURCES renderer/17-read-pixels/read-pixels.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp)
+add_sdl_example_executable(renderer-debug-text SOURCES renderer/18-debug-text/debug-text.c)
 add_sdl_example_executable(audio-simple-playback SOURCES audio/01-simple-playback/simple-playback.c)
 add_sdl_example_executable(audio-simple-playback-callback SOURCES audio/02-simple-playback-callback/simple-playback-callback.c)
+add_sdl_example_executable(audio-load-wav SOURCES audio/03-load-wav/load-wav.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.wav)
+add_sdl_example_executable(audio-multiple-streams SOURCES audio/04-multiple-streams/multiple-streams.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.wav ${CMAKE_CURRENT_SOURCE_DIR}/../test/sword.wav)
+add_sdl_example_executable(input-joystick-polling SOURCES input/01-joystick-polling/joystick-polling.c)
+add_sdl_example_executable(input-joystick-events SOURCES input/02-joystick-events/joystick-events.c)
+add_sdl_example_executable(camera-read-and-draw SOURCES camera/01-read-and-draw/read-and-draw.c)
+add_sdl_example_executable(pen-drawing-lines SOURCES pen/01-drawing-lines/drawing-lines.c)
+add_sdl_example_executable(asyncio-load-bitmaps SOURCES asyncio/01-load-bitmaps/load-bitmaps.c DATAFILES ${CMAKE_CURRENT_SOURCE_DIR}/../test/sample.bmp ${CMAKE_CURRENT_SOURCE_DIR}/../test/gamepad_front.bmp ${CMAKE_CURRENT_SOURCE_DIR}/../test/speaker.bmp ${CMAKE_CURRENT_SOURCE_DIR}/../test/icon2x.bmp)
+add_sdl_example_executable(demo-snake SOURCES demo/01-snake/snake.c)
+add_sdl_example_executable(demo-woodeneye-008 SOURCES demo/02-woodeneye-008/woodeneye-008.c)
+add_sdl_example_executable(demo-infinite-monkeys SOURCES demo/03-infinite-monkeys/infinite-monkeys.c)
+add_sdl_example_executable(demo-bytepusher SOURCES demo/04-bytepusher/bytepusher.c)
 
+# When you add an example, remember to add the Visual Studio project as well:
+# - Add a new example in examples/
+# - Run python VisualC/examples/generate.py
+# - Take note of the newly generated .vcxproj files
+# - Modify the .vcxproj files if necessary (adding content such as BMP or WAV files)
+# - Open VisualC/SDL.sln in Visual Studio or JetBrains Rider
+# - Locate the appropriate folder in the Solution Explorer
+# - Add the newly generated projects: Right click -> Add -> Existing project...
+# - Test if they work
+# - Save the SDL.sln solution
 
 if(PSP)
     # Build EBOOT files if building for PSP
@@ -191,36 +170,7 @@ if(PSP)
             ICON_PATH       NULL
             BACKGROUND_PATH NULL
             PREVIEW_PATH    NULL
-        )
-        add_custom_command(
-            TARGET ${APP} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${ARG_TARGET}>/sdl-${APP}
-        )
-        add_custom_command(
-            TARGET ${APP} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E rename
-            $<TARGET_FILE_DIR:${ARG_TARGET}>/EBOOT.PBP
-            $<TARGET_FILE_DIR:${ARG_TARGET}>/sdl-${APP}/EBOOT.PBP
-        )
-        if(BUILD_PRX)
-            add_custom_command(
-                TARGET ${APP} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy
-                $<TARGET_FILE_DIR:${ARG_TARGET}>/${APP}
-                $<TARGET_FILE_DIR:${ARG_TARGET}>/sdl-${APP}/${APP}
-            )
-            add_custom_command(
-                TARGET ${APP} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E rename
-                $<TARGET_FILE_DIR:${ARG_TARGET}>/${APP}.prx
-                $<TARGET_FILE_DIR:${ARG_TARGET}>/sdl-${APP}/${APP}.prx
-            )
-        endif()
-        add_custom_command(
-            TARGET ${APP} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E remove
-            $<TARGET_FILE_DIR:${ARG_TARGET}>/PARAM.SFO
+            OUTPUT_DIR      $<TARGET_FILE_DIR:${APP}>/sdl-${APP}
         )
     endforeach()
 endif()
@@ -305,7 +255,7 @@ if(ANDROID AND TARGET SDL3::Jar)
 
         include(SdlAndroidFunctions)
         sdl_create_android_debug_keystore(SDL_example-debug-keystore)
-        sdl_android_compile_resources(SDL_example-resources RESFOLDER ../test/android/res)
+        sdl_android_compile_resources(SDL_example-resources RESFOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../test/android/res)
         add_custom_target(sdl-example-apks)
         foreach(EXAMPLE ${SDL_EXAMPLE_EXECUTABLES})
             set(ANDROID_MANIFEST_APP_NAME "${EXAMPLE}")
@@ -317,11 +267,11 @@ if(ANDROID AND TARGET SDL3::Jar)
             set(GENERATED_SRC_FOLDER "${CMAKE_CURRENT_BINARY_DIR}/android/${EXAMPLE}-src")
             set(GENERATED_RES_FOLDER "${GENERATED_SRC_FOLDER}/res")
             set(JAVA_PACKAGE_DIR "${GENERATED_SRC_FOLDER}/${JAVA_PACKAGE_DIR}")
-            configure_file(../test/android/cmake/SDLEntryTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLEntryTestActivity.java" @ONLY)
-            configure_file(../test/android/cmake/SDLTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLTestActivity.java" @ONLY)
-            configure_file(../test/android/cmake/res/values/strings.xml.cmake android/res/values/strings-${EXAMPLE}.xml @ONLY)
-            configure_file(../test/android/cmake/res/xml/shortcuts.xml.cmake "${GENERATED_RES_FOLDER}/xml/shortcuts.xml" @ONLY)
-            configure_file(../test/android/cmake/AndroidManifest.xml.cmake "${generated_manifest_path}" @ONLY)
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../test/android/cmake/SDLEntryTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLEntryTestActivity.java" @ONLY)
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../test/android/cmake/SDLTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLTestActivity.java" @ONLY)
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../test/android/cmake/res/values/strings.xml.cmake android/res/values/strings-${EXAMPLE}.xml @ONLY)
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../test/android/cmake/res/xml/shortcuts.xml.cmake "${GENERATED_RES_FOLDER}/xml/shortcuts.xml" @ONLY)
+            configure_file(${CMAKE_CURRENT_SOURCE_DIR}/../test/android/cmake/AndroidManifest.xml.cmake "${generated_manifest_path}" @ONLY)
             file(GENERATE
                 OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/android/${EXAMPLE}-$<CONFIG>/res/values/strings.xml"
                 INPUT "${CMAKE_CURRENT_BINARY_DIR}/android/res/values/strings-${EXAMPLE}.xml"
