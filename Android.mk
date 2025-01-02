@@ -76,7 +76,7 @@ LOCAL_CFLAGS += \
 	-Wkeyword-macro \
 
 # Warnings we haven't fixed (yet)
-LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare
+LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare -DSDL_VIDEO_OSMESA
 
 LOCAL_CXXFLAGS += -std=gnu++11
 
@@ -106,7 +106,7 @@ LOCAL_LDLIBS :=
 
 LOCAL_LDFLAGS :=
 
-LOCAL_EXPORT_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -llog -landroid
+LOCAL_EXPORT_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -llog -landroid /../app/src/main/jniLibs/$(TARGET_ARCH)/LibGL.so
 
 include $(BUILD_STATIC_LIBRARY)
 

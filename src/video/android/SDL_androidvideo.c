@@ -19,6 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include "../../SDL_internal.h"
+#ifdef SDL_VIDEO_OSMESA
+#include "osm_bridge.h"
+#endif
 
 #ifdef SDL_VIDEO_DRIVER_ANDROID
 
@@ -69,6 +72,7 @@ static int Android_ScreenRate = 0;
 SDL_sem *Android_PauseSem = NULL;
 SDL_sem *Android_ResumeSem = NULL;
 SDL_mutex *Android_ActivityMutex = NULL;
+static bool osmWasInit = false;
 
 static void Android_SuspendScreenSaver(_THIS)
 {
@@ -125,8 +129,23 @@ static SDL_VideoDevice *Android_CreateDevice(void)
 
     device->free = Android_DeleteDevice;
 
+#ifdef SDL_VIDEO_OSMESA
+    if (!osmWasInit){
+        osm_init();
+        osmWasInit = true;
+    }
+
+    device->GL_LoadLibrary = Android_GLES_LoadLibrary;
+    device->GL_GetProcAddress = Android_GLES_GetProcAddress;
+    device->GL_UnloadLibrary = Android_GLES_UnloadLibrary;
+    device->GL_CreateContext = CreateGLContext;
+    device->GL_MakeCurrent = MakeCurrent;
+    device->GL_SetSwapInterval = SetSwapInterval;
+    device->GL_GetSwapInterval = GetSwapInterval;
+    device->GL_SwapWindow = SwapWindow;
+    device->GL_DeleteContext = DestroyContext;
     /* GL pointers */
-#ifdef SDL_VIDEO_OPENGL_EGL
+#else SDL_VIDEO_OPENGL_EGL
     device->GL_LoadLibrary = Android_GLES_LoadLibrary;
     device->GL_GetProcAddress = Android_GLES_GetProcAddress;
     device->GL_UnloadLibrary = Android_GLES_UnloadLibrary;

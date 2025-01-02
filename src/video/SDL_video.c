@@ -48,7 +48,9 @@
 #if defined(SDL_VIDEO_OPENGL_ES2) && !defined(SDL_VIDEO_OPENGL)
 #include "SDL_opengles2.h"
 #endif /* SDL_VIDEO_OPENGL_ES2 && !SDL_VIDEO_OPENGL */
-
+#ifdef SDL_VIDEO_OSMESA
+extern void SetupWindow (SDL_Window *window);
+#endif
 #ifndef SDL_VIDEO_OPENGL
 #ifndef GL_CONTEXT_RELEASE_BEHAVIOR_KHR
 #define GL_CONTEXT_RELEASE_BEHAVIOR_KHR 0x82FB
@@ -1850,7 +1852,9 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
 
     /* If the window was created fullscreen, make sure the mode code matches */
     SDL_UpdateFullscreenMode(window, FULLSCREEN_VISIBLE(window));
-
+#ifdef SDL_VIDEO_OSMESA
+    SetupWindow(window);
+#endif
     return window;
 }
 
@@ -4161,14 +4165,25 @@ SDL_Window *SDL_GL_GetCurrentWindow(void)
     }
     return (SDL_Window *)SDL_TLSGet(_this->current_glwin_tls);
 }
+#if SDL_VIDEO_OSMESA
+extern SDL_GLContext GetCurrentContext (void);
+#endif
 
 SDL_GLContext SDL_GL_GetCurrentContext(void)
 {
+#if SDL_VIDEO_OSMESA
+    if (!_this) {
+        SDL_UninitializedVideo();
+        return NULL;
+    }
+    return GetCurrentContext();
+#else
     if (!_this) {
         SDL_UninitializedVideo();
         return NULL;
     }
     return (SDL_GLContext)SDL_TLSGet(_this->current_glctx_tls);
+#endif
 }
 
 void SDL_GL_GetDrawableSize(SDL_Window * window, int *w, int *h)
