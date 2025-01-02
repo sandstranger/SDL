@@ -3505,7 +3505,7 @@ void *SDL_GL_GetProcAddress(const char *proc)
 
     if (handle == NULL){
 
-        handle = SDL_LoadObject ("libGL.so");
+        handle = SDL_LoadObject (SDL_getenv("SDL_VIDEO_GL_DRIVER"));
     }
 
     retval = SDL_LoadFunction(handle, proc);
