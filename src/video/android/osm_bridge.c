@@ -198,15 +198,13 @@ int SwapWindow(_THIS, SDL_Window *window){
 
 void DestroyContext (SDL_GLContext context){
     if (context!=NULL){
-
         if (context == GetCurrentContext()){
             OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
             currentBundle = NULL;
         }
-
         osm_render_window_t *renderWindow = (osm_render_window_t*) context;
         if (renderWindow->context!=NULL) {
-            OSMesaDestroyContext_p(renderWindow->context);
+//            OSMesaDestroyContext_p(renderWindow->context);
         }
     }
 }
