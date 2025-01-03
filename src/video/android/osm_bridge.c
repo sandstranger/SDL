@@ -18,7 +18,7 @@ static const char* osm_LogTag = "[ XXX3 OSM Bridge ]";
 static int _swapInterval;
 static int contextsIdGenerator;
 static int32_t last_stride;
-
+static void *abuffer;
 // Its not in a .h file because it is not supposed to be used outsife of this file.
 void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval);
 
@@ -28,8 +28,8 @@ bool osm_init(void) {
 
 void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
     buf->bits = &xxx3_no_render_buffer;
-    buffer.width = 1;
-    buffer.height = 1;
+    buffer.width = ANativeWindow_getWidth(nativeSurface);
+    buffer.height = ANativeWindow_getHeight(nativeSurface);
     buf->stride = 0;
 }
 
@@ -65,14 +65,16 @@ void* xxx3OsmCreateContext() {
     return renderWindow;
 }
 
-void xxx3_osm_apply_current(xxx3_osm_render_window_t *renderWindow) {
-    if (renderWindow!=NULL) {
-        OSMesaMakeCurrent_p(renderWindow->context, buffer.bits, GL_UNSIGNED_BYTE, buffer.width,
-                            buffer.height);
-        if (buffer.stride != last_stride)
-            OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buffer.stride);
-        last_stride = buffer.stride;
-    }
+void xxx2_osm_apply_current_ll(ANativeWindow_Buffer* buf,xxx3_osm_render_window_t *renderWindow) {
+        abuffer = malloc(buf->width * buf->height * 4);
+        OSMesaMakeCurrent_p(renderWindow->context,
+                                abuffer,
+                                GL_UNSIGNED_BYTE,
+                                buf->width,
+                                buf->height);
+    if (buf->stride != last_stride)
+        OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buf->stride);
+    last_stride = buf->stride;
 }
 
 void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindow) {
@@ -92,7 +94,7 @@ void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindo
         xxx3_osm_set_no_render_buffer(&buffer);
     }
     xxx3_osm = renderWindow;
-    xxx3_osm_apply_current(renderWindow);
+    xxx2_osm_apply_current_ll(&buffer,renderWindow);
     OSMesaPixelStore_p(OSMESA_Y_UP, 0);
 
     if (!hasCleaned)
@@ -109,17 +111,17 @@ void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindo
 void xxx3OsmSwapBuffers() {
     ANativeWindow_lock(nativeSurface,&buffer, NULL);
     if (xxx3_osm) {
-        xxx3_osm_apply_current(xxx3_osm);
+        xxx2_osm_apply_current_ll(&buffer,xxx3_osm);
     }
     glFinish_p();
     ANativeWindow_unlockAndPost(nativeSurface);
 }
 
 void xxx3OsmSwapInterval(int interval) {
+    _swapInterval = interval;
     if (nativeSurface != NULL)
         setNativeWindowSwapInterval(nativeSurface, interval);
 }
-
 
 int MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
 {
