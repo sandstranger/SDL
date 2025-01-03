@@ -183,11 +183,7 @@ SDL_GLContext GetCurrentContext (void){
     return osm_get_current();
 }
 SDL_GLContext CreateGLContext (_THIS,SDL_Window *window){
-    osm_render_window_t *context = osm_init_context(NULL);
-    if (GetCurrentContext() == NULL){
-        MakeCurrent(NULL,window,context);
-    }
-    return context;
+    return osm_init_context(NULL);
 }
 
 void SetupWindow (SDL_Window *window){
