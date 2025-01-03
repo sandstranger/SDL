@@ -8,162 +8,124 @@
 #include "osm_bridge.h"
 #include "SDL_androidwindow.h"
 
-#define STATE_RENDERER_ALIVE 0
-#define STATE_RENDERER_NEW_WINDOW 1
-
-static const char* g_LogTag = "GLBridge";
-static __thread osm_render_window_t* currentBundle;
-static  basic_render_window_t* mainWindowBundle;
-// a tiny buffer for rendering when there's nowhere t render
-static char no_render_buffer[4];
-static int _swapInterval;
+static ANativeWindow *nativeSurface;
+static ANativeWindow_Buffer buffer;
+static xxx3_osm_render_window_t *xxx3_osm;
+static bool hasCleaned = false;
 static bool hasSetNoRendererBuffer = false;
+static char xxx3_no_render_buffer[4];
+static const char* osm_LogTag = "[ XXX3 OSM Bridge ]";
+static int _swapInterval;
 static int contextsIdGenerator;
+static int32_t last_stride;
 
 // Its not in a .h file because it is not supposed to be used outsife of this file.
 void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval);
 
 bool osm_init(void) {
-    if(!dlsym_OSMesa()) return false;
-    return true;
+    return dlsym_OSMesa();
 }
 
-osm_render_window_t* osm_get_current() {
-    return currentBundle;
+void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf, SDL_Window *window) {
+    buf->bits = &xxx3_no_render_buffer;
+    buf->width = window->w;
+    buf->height = window->h;
+    buf->stride = 0;
 }
 
-osm_render_window_t* osm_init_context(osm_render_window_t* share) {
-    osm_render_window_t* render_window = malloc(sizeof(osm_render_window_t));
-    if(render_window == NULL) return NULL;
-    render_window->id = contextsIdGenerator;
-    contextsIdGenerator++;
-    memset(render_window, 0, sizeof(osm_render_window_t));
-    OSMesaContext osmesa_share = NULL;
-    if(share != NULL) osmesa_share = share->context;
-    OSMesaContext context = OSMesaCreateContext_p(GL_RGBA, osmesa_share);
-    if(context == NULL) {
-        free(render_window);
+struct xxx3_osm_render_window_t* xxx3OsmGetCurrentContext() {
+    return xxx3_osm;
+}
+
+void* xxx3OsmCreateContext() {
+    xxx3_osm_render_window_t *renderWindow = malloc(sizeof(xxx3_osm_render_window_t));
+    if (!renderWindow)
+    {
+        printf("%s Failed to allocate memory for xxx3_osm\n", osm_LogTag);
         return NULL;
     }
-    render_window->context = context;
-    return render_window;
-}
 
-void osm_set_no_render_buffer(ANativeWindow_Buffer* buffer) {
-    buffer->bits = &no_render_buffer;
-    buffer->width = 1;
-    buffer->height = 1;
-    buffer->stride = 0;
-}
+    memset(renderWindow, 0, sizeof(xxx3_osm_render_window_t));
 
-void osm_swap_surfaces(osm_render_window_t* bundle) {
-    if(bundle->nativeSurface != NULL && bundle->newNativeSurface != bundle->nativeSurface) {
-        if(!bundle->disable_rendering) {
-            __android_log_print(ANDROID_LOG_INFO, g_LogTag, "Unlocking for cleanup...");
-            ANativeWindow_unlockAndPost(bundle->nativeSurface);
-        }
-        ANativeWindow_release(bundle->nativeSurface);
-    }
-    if(bundle->newNativeSurface != NULL) {
-        __android_log_print(ANDROID_LOG_ERROR, g_LogTag, "Switching to new native surface");
-        bundle->nativeSurface = bundle->newNativeSurface;
-        bundle->newNativeSurface = NULL;
-        ANativeWindow_acquire(bundle->nativeSurface);
-        ANativeWindow_setBuffersGeometry(bundle->nativeSurface, 0, 0, WINDOW_FORMAT_RGBX_8888);
-        bundle->disable_rendering = false;
-        return;
-    }else {
-        __android_log_print(ANDROID_LOG_ERROR, g_LogTag,
-                            "No new native surface, switching to dummy framebuffer");
-        bundle->nativeSurface = NULL;
-        osm_set_no_render_buffer(&bundle->buffer);
-        bundle->disable_rendering = true;
+    printf("%s generating context\n", osm_LogTag);
+
+    OSMesaContext osmesa_share = NULL;
+  //  if (contextSrc != NULL) osmesa_share = contextSrc;
+
+    OSMesaContext context = OSMesaCreateContext_p(OSMESA_RGBA, osmesa_share);
+    if (context == NULL) {
+        printf("%s OSMesaContext is Null!!!\n", osm_LogTag);
+        return NULL;
     }
 
+    renderWindow->context = context;
+    renderWindow->id = contextsIdGenerator;
+    contextsIdGenerator++;
+    printf("%s context = %p\n", osm_LogTag, context);
+    return renderWindow;
 }
 
-void osm_release_window() {
-    currentBundle->newNativeSurface = NULL;
-    osm_swap_surfaces(currentBundle);
+void xxx3_osm_apply_current(xxx3_osm_render_window_t *renderWindow) {
+    if (renderWindow!=NULL) {
+        OSMesaMakeCurrent_p(renderWindow->context, buffer.bits, GL_UNSIGNED_BYTE, buffer.width,
+                            buffer.height);
+        if (buffer.stride != last_stride)
+            OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buffer.stride);
+        last_stride = buffer.stride;
+    }
 }
 
-void osm_apply_current_ll() {
-    ANativeWindow_Buffer* buffer = &currentBundle->buffer;
-    OSMesaMakeCurrent_p(currentBundle->context, buffer->bits, GL_UNSIGNED_BYTE, buffer->width, buffer->height);
-    if(buffer->stride != currentBundle->last_stride)
-        OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buffer->stride);
-    currentBundle->last_stride = buffer->stride;
-}
+void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindow) {
+    if (!hasCleaned)
+    {
+        SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+        printf("%s making current\n", osm_LogTag);
+        nativeSurface = data->native_window;
+        ANativeWindow_acquire(nativeSurface);
+        ANativeWindow_setBuffersGeometry(nativeSurface, 0, 0, WINDOW_FORMAT_RGBX_8888);
+        ANativeWindow_lock(nativeSurface, &buffer, NULL);
+    }
 
-void osm_make_current(SDL_Window *window,osm_render_window_t* bundle) {
-    if(bundle == NULL) {
-        //technically this does nothing as its not possible to unbind a context in OSMesa
-        OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
-        currentBundle = NULL;
-        return;
-    }
-    bool hasSetMainWindow = false;
-    currentBundle = bundle;
-    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-    if(mainWindowBundle == NULL) {
-        mainWindowBundle = (basic_render_window_t*) bundle;
-        __android_log_print(ANDROID_LOG_INFO, g_LogTag, "Main window bundle is now %p", mainWindowBundle);
-        mainWindowBundle->newNativeSurface = data->native_window;
-        hasSetMainWindow = true;
-    }
-    if(bundle->nativeSurface == NULL) {
-        //prepare the buffer for our first render!
-        osm_swap_surfaces(bundle);
-        if(hasSetMainWindow) mainWindowBundle->state = STATE_RENDERER_ALIVE;
-    }
     if (!hasSetNoRendererBuffer)
     {
-        osm_set_no_render_buffer(&bundle->buffer);
         hasSetNoRendererBuffer = true;
+        xxx3_osm_set_no_render_buffer(&buffer,window);
     }
-    osm_apply_current_ll();
-    OSMesaPixelStore_p(OSMESA_Y_UP,0);
-}
+    xxx3_osm = renderWindow;
+    xxx3_osm_apply_current(renderWindow);
+    OSMesaPixelStore_p(OSMESA_Y_UP, 0);
 
-
-void osm_swap_buffers() {
-    if(currentBundle->state == STATE_RENDERER_NEW_WINDOW) {
-        osm_swap_surfaces(currentBundle);
-        currentBundle->state = STATE_RENDERER_ALIVE;
-    }
-
-    if(currentBundle->nativeSurface != NULL && !currentBundle->disable_rendering)
-        if(ANativeWindow_lock(currentBundle->nativeSurface, &currentBundle->buffer, NULL) != 0)
-            osm_release_window();
-
-    osm_apply_current_ll();
-    glFinish_p(); // this will force osmesa to write the last rendered image into the buffer
-
-    if(currentBundle->nativeSurface != NULL && !currentBundle->disable_rendering)
-        if(ANativeWindow_unlockAndPost(currentBundle->nativeSurface) != 0)
-            osm_release_window();
-}
-
-void osm_setup_window(SDL_Window *window) {
-    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-    if(mainWindowBundle != NULL) {
-        __android_log_print(ANDROID_LOG_INFO, g_LogTag, "Main window bundle is not NULL, changing state");
-        mainWindowBundle->state = STATE_RENDERER_NEW_WINDOW;
-        mainWindowBundle->newNativeSurface = data->native_window;
+    if (!hasCleaned)
+    {
+        hasCleaned = true;
+        printf("%s vendor: %s\n", osm_LogTag, glGetString_p(GL_VENDOR));
+        printf("%s renderer: %s\n", osm_LogTag, glGetString_p(GL_RENDERER));
+        glClear_p(GL_COLOR_BUFFER_BIT);
+        glClearColor_p(0.4f, 0.4f, 0.4f, 1.0f);
+        ANativeWindow_unlockAndPost(nativeSurface);
     }
 }
 
-void osm_swap_interval(int swapInterval) {
-    if(mainWindowBundle != NULL && mainWindowBundle->nativeSurface != NULL) {
-        _swapInterval = swapInterval;
-        setNativeWindowSwapInterval(mainWindowBundle->nativeSurface, swapInterval);
+void xxx3OsmSwapBuffers() {
+    ANativeWindow_lock(nativeSurface,&buffer, NULL);
+    if (xxx3_osm) {
+        xxx3_osm_apply_current(xxx3_osm);
     }
+    glFinish_p();
+    ANativeWindow_unlockAndPost(nativeSurface);
 }
+
+void xxx3OsmSwapInterval(int interval) {
+    if (nativeSurface != NULL)
+        setNativeWindowSwapInterval(nativeSurface, interval);
+}
+
 
 int MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
 {
     if (window && context) {
-        osm_make_current(window,context);
+        xxx3_osm_render_window_t *renderWindow = context;
+        xxx3OsmMakeCurrent(window,renderWindow);
         return 0;
     } else {
         return -1;
@@ -175,37 +137,35 @@ int GetSwapInterval (_THIS){
 }
 
 int SetSwapInterval (_THIS,int swapInterval){
-    osm_swap_interval(swapInterval);
+    xxx3OsmSwapInterval(swapInterval);
     return 0;
 }
 
 SDL_GLContext GetCurrentContext (void){
-    return osm_get_current();
-}
-SDL_GLContext CreateGLContext (_THIS,SDL_Window *window){
-    return osm_init_context(NULL);
+    return xxx3OsmGetCurrentContext();
 }
 
-void SetupWindow (SDL_Window *window){
-    osm_setup_window (window);
+SDL_GLContext CreateGLContext (_THIS,SDL_Window *window){
+    return xxx3OsmCreateContext();
 }
 
 int SwapWindow(_THIS, SDL_Window *window){
-    osm_swap_buffers();
+    xxx3OsmSwapBuffers();
     return 0;
 }
 
-void DestroyContext (SDL_GLContext context){
+void DestroyContext (_THIS,SDL_GLContext context){
     if (context!=NULL){
-        osm_render_window_t *contextRenderWindow = (osm_render_window_t *) context;
-        if (contextRenderWindow->id <0){
+        xxx3_osm_render_window_t *contextToDestroy = (xxx3_osm_render_window_t *) context;
+        if (contextToDestroy->id <0){
             return;
         }
-        osm_render_window_t *currentContextWindow = (osm_render_window_t *) GetCurrentContext();
-        if (currentContextWindow!=NULL && contextRenderWindow->id == currentContextWindow->id){
-            OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
-            currentBundle = NULL;
+        xxx3_osm_render_window_t *currentContextWindow = (xxx3_osm_render_window_t *) GetCurrentContext();
+        if (currentContextWindow!=NULL && contextToDestroy->id == currentContextWindow->id){
+            OSMesaMakeCurrent_p(NULL, buffer.bits, GL_UNSIGNED_BYTE, buffer.width,
+                                buffer.height);
+            xxx3_osm = NULL;
         }
-        OSMesaDestroyContext_p(contextRenderWindow->context);
+        OSMesaDestroyContext_p(contextToDestroy->context);
     }
 }

@@ -48,9 +48,6 @@
 #if defined(SDL_VIDEO_OPENGL_ES2) && !defined(SDL_VIDEO_OPENGL)
 #include "SDL_opengles2.h"
 #endif /* SDL_VIDEO_OPENGL_ES2 && !SDL_VIDEO_OPENGL */
-#ifdef SDL_VIDEO_OSMESA
-extern void SetupWindow (SDL_Window *window);
-#endif
 #ifndef SDL_VIDEO_OPENGL
 #ifndef GL_CONTEXT_RELEASE_BEHAVIOR_KHR
 #define GL_CONTEXT_RELEASE_BEHAVIOR_KHR 0x82FB
@@ -1819,11 +1816,11 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
     }
     _this->windows = window;
 
+
     if (_this->CreateSDLWindow && _this->CreateSDLWindow(_this, window) < 0) {
         SDL_DestroyWindow(window);
         return NULL;
     }
-
     /* Clear minimized if not on windows, only windows handles it at create rather than FinishWindowCreation,
      * but it's important or window focus will get broken on windows!
      */
@@ -1852,9 +1849,6 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
 
     /* If the window was created fullscreen, make sure the mode code matches */
     SDL_UpdateFullscreenMode(window, FULLSCREEN_VISIBLE(window));
-#ifdef SDL_VIDEO_OSMESA
-    SetupWindow(window);
-#endif
     return window;
 }
 

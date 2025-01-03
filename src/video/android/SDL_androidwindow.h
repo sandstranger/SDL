@@ -25,7 +25,6 @@
 
 #include "../../core/android/SDL_android.h"
 #include "../SDL_egl_c.h"
-#include "osm_bridge.h"
 
 extern int Android_CreateWindow(_THIS, SDL_Window *window);
 extern void Android_SetWindowTitle(_THIS, SDL_Window *window);

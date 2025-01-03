@@ -19,6 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include "../../SDL_internal.h"
+#include "osm_bridge.h"
 
 #ifdef SDL_VIDEO_DRIVER_ANDROID
 
@@ -36,13 +37,14 @@
 /* Currently only one window */
 SDL_Window *Android_Window = NULL;
 
+#include "android/log.h"
+
 int Android_CreateWindow(_THIS, SDL_Window *window)
 {
     SDL_WindowData *data;
     int retval = 0;
 
     Android_ActivityMutex_Lock_Running();
-
     if (Android_Window) {
         retval = SDL_SetError("Android only supports one window");
         goto endfunction;
