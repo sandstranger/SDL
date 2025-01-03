@@ -26,10 +26,10 @@ bool osm_init(void) {
     return dlsym_OSMesa();
 }
 
-void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf, SDL_Window *window) {
+void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
     buf->bits = &xxx3_no_render_buffer;
-    buf->width = window->w;
-    buf->height = window->h;
+    buffer.width = 1;
+    buffer.height = 1;
     buf->stride = 0;
 }
 
@@ -89,7 +89,7 @@ void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindo
     if (!hasSetNoRendererBuffer)
     {
         hasSetNoRendererBuffer = true;
-        xxx3_osm_set_no_render_buffer(&buffer,window);
+        xxx3_osm_set_no_render_buffer(&buffer);
     }
     xxx3_osm = renderWindow;
     xxx3_osm_apply_current(renderWindow);
