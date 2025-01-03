@@ -15,6 +15,7 @@ typedef struct {
 } basic_render_window_t;
 
 typedef struct {
+    int id;
     char       state;
     struct ANativeWindow *nativeSurface;
     struct ANativeWindow *newNativeSurface;

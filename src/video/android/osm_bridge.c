@@ -18,6 +18,7 @@ static  basic_render_window_t* mainWindowBundle;
 static char no_render_buffer[4];
 static int _swapInterval;
 static bool hasSetNoRendererBuffer = false;
+static int contextsIdGenerator;
 
 // Its not in a .h file because it is not supposed to be used outsife of this file.
 void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval);
@@ -34,6 +35,8 @@ osm_render_window_t* osm_get_current() {
 osm_render_window_t* osm_init_context(osm_render_window_t* share) {
     osm_render_window_t* render_window = malloc(sizeof(osm_render_window_t));
     if(render_window == NULL) return NULL;
+    render_window->id = contextsIdGenerator;
+    contextsIdGenerator++;
     memset(render_window, 0, sizeof(osm_render_window_t));
     OSMesaContext osmesa_share = NULL;
     if(share != NULL) osmesa_share = share->context;
@@ -198,7 +201,9 @@ int SwapWindow(_THIS, SDL_Window *window){
 
 void DestroyContext (SDL_GLContext context){
     if (context!=NULL){
-        if (context == GetCurrentContext()){
+        osm_render_window_t *contextRenderWindow = (osm_render_window_t *) context;
+        osm_render_window_t *currentContextWindow = (osm_render_window_t *) GetCurrentContext();
+        if (currentContextWindow!=NULL && contextRenderWindow->id == currentContextWindow->id){
             OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
             currentBundle = NULL;
         }
