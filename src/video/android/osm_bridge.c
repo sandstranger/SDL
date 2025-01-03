@@ -17,6 +17,7 @@ static  basic_render_window_t* mainWindowBundle;
 // a tiny buffer for rendering when there's nowhere t render
 static char no_render_buffer[4];
 static int _swapInterval;
+static bool hasSetNoRendererBuffer = false;
 
 // Its not in a .h file because it is not supposed to be used outsife of this file.
 void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval);
@@ -91,11 +92,7 @@ void osm_apply_current_ll() {
     currentBundle->last_stride = buffer->stride;
 }
 
-void osm_make_current(SDL_Window *window,SDL_GLContext context) {
-    osm_render_window_t* bundle = NULL;
-    if (context){
-        bundle = (osm_render_window_t*) context;
-    }
+void osm_make_current(SDL_Window *window,osm_render_window_t* bundle) {
     if(bundle == NULL) {
         //technically this does nothing as its not possible to unbind a context in OSMesa
         OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
@@ -116,10 +113,15 @@ void osm_make_current(SDL_Window *window,SDL_GLContext context) {
         osm_swap_surfaces(bundle);
         if(hasSetMainWindow) mainWindowBundle->state = STATE_RENDERER_ALIVE;
     }
-    osm_set_no_render_buffer(&bundle->buffer);
+    if (!hasSetNoRendererBuffer)
+    {
+        osm_set_no_render_buffer(&bundle->buffer);
+        hasSetNoRendererBuffer = true;
+    }
     osm_apply_current_ll();
     OSMesaPixelStore_p(OSMESA_Y_UP,0);
 }
+
 
 void osm_swap_buffers() {
     if(currentBundle->state == STATE_RENDERER_NEW_WINDOW) {
@@ -177,9 +179,12 @@ int SetSwapInterval (_THIS,int swapInterval){
 SDL_GLContext GetCurrentContext (void){
     return osm_get_current();
 }
-
 SDL_GLContext CreateGLContext (_THIS,SDL_Window *window){
-    return osm_init_context(NULL);
+    osm_render_window_t *context = osm_init_context(NULL);
+    if (GetCurrentContext() == NULL){
+        MakeCurrent(NULL,window,context);
+    }
+    return context;
 }
 
 void SetupWindow (SDL_Window *window){
@@ -193,7 +198,15 @@ int SwapWindow(_THIS, SDL_Window *window){
 
 void DestroyContext (SDL_GLContext context){
     if (context!=NULL){
+
+        if (context == GetCurrentContext()){
+            OSMesaMakeCurrent_p(NULL, NULL, 0, 0, 0);
+            currentBundle = NULL;
+        }
+
         osm_render_window_t *renderWindow = (osm_render_window_t*) context;
-        OSMesaDestroyContext_p(renderWindow->context);
+        if (renderWindow->context!=NULL) {
+            OSMesaDestroyContext_p(renderWindow->context);
+        }
     }
 }
