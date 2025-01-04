@@ -14,6 +14,7 @@ void (*OSMesaDestroyContext_p) (OSMesaContext ctx);
 void (*OSMesaPixelStore_p) ( GLint pname, GLint value );
 GLubyte* (*glGetString_p) (GLenum name);
 void (*glFinish_p) (void);
+GLAPI GLenum GLAPIENTRY (*glGetError_p) (void);
 void (*glClearColor_p) (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 void (*glClear_p) (GLbitfield mask);
 void (*glReadPixels_p) (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void * data);
@@ -38,5 +39,6 @@ bool dlsym_OSMesa() {
     glClear_p = OSMesaGetProcAddress_p("glClear");
     glFinish_p = OSMesaGetProcAddress_p("glFinish");
     glReadPixels_p = OSMesaGetProcAddress_p("glReadPixels");
+    glGetError_p = OSMesaGetProcAddress_p("glGetError");
     return true;
 }

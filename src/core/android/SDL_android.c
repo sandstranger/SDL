@@ -319,6 +319,7 @@ static jmethodID midGetContext;
 static jmethodID midGetDisplayDPI;
 static jmethodID midGetManifestEnvironmentVariables;
 static jmethodID midGetNativeSurface;
+static jmethodID midGetZinkSurface;
 static jmethodID midInitTouch;
 static jmethodID midIsAndroidTV;
 static jmethodID midIsChromebook;
@@ -607,6 +608,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
     midGetDisplayDPI = (*env)->GetStaticMethodID(env, mActivityClass, "getDisplayDPI", "()Landroid/util/DisplayMetrics;");
     midGetManifestEnvironmentVariables = (*env)->GetStaticMethodID(env, mActivityClass, "getManifestEnvironmentVariables", "()Z");
     midGetNativeSurface = (*env)->GetStaticMethodID(env, mActivityClass, "getNativeSurface", "()Landroid/view/Surface;");
+    midGetZinkSurface = (*env)->GetStaticMethodID(env, mActivityClass, "getZinkSurface", "()Landroid/view/Surface;");
     midInitTouch = (*env)->GetStaticMethodID(env, mActivityClass, "initTouch", "()V");
     midIsAndroidTV = (*env)->GetStaticMethodID(env, mActivityClass, "isAndroidTV", "()Z");
     midIsChromebook = (*env)->GetStaticMethodID(env, mActivityClass, "isChromebook", "()Z");
@@ -614,6 +616,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
     midIsScreenKeyboardShown = (*env)->GetStaticMethodID(env, mActivityClass, "isScreenKeyboardShown", "()Z");
     midIsTablet = (*env)->GetStaticMethodID(env, mActivityClass, "isTablet", "()Z");
     midManualBackButton = (*env)->GetStaticMethodID(env, mActivityClass, "manualBackButton", "()V");
+    unlockSurface = (*env)->GetStaticMethodID(env, mActivityClass, "unlockSurface", "()V");
     midMinimizeWindow = (*env)->GetStaticMethodID(env, mActivityClass, "minimizeWindow", "()V");
     midOpenURL = (*env)->GetStaticMethodID(env, mActivityClass, "openURL", "(Ljava/lang/String;)I");
     midRequestPermission = (*env)->GetStaticMethodID(env, mActivityClass, "requestPermission", "(Ljava/lang/String;I)V");
@@ -1048,6 +1051,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeSurfaceCreated)(JNIEnv *env, j
         SDL_WindowData *data = (SDL_WindowData *)Android_Window->driverdata;
 
         data->native_window = Android_JNI_GetNativeWindow();
+        data->zinkWindow = Android_JNI_GetZinkSurface();
         if (data->native_window == NULL) {
             SDL_SetError("Could not fetch native window from UI thread");
         }
@@ -1113,6 +1117,11 @@ retry:
         if (data->native_window) {
             ANativeWindow_release(data->native_window);
             data->native_window = NULL;
+        }
+
+        if (data->zinkWindow) {
+            ANativeWindow_release(data->zinkWindow);
+            data->zinkWindow = NULL;
         }
 
         /* GL Context handling is done in the event loop because this function is run from the Java thread */
@@ -1422,6 +1431,21 @@ ANativeWindow *Android_JNI_GetNativeWindow(void)
     JNIEnv *env = Android_JNI_GetEnv();
 
     s = (*env)->CallStaticObjectMethod(env, mActivityClass, midGetNativeSurface);
+    if (s) {
+        anw = ANativeWindow_fromSurface(env, s);
+        (*env)->DeleteLocalRef(env, s);
+    }
+
+    return anw;
+}
+
+ANativeWindow *Android_JNI_GetZinkSurface(void)
+{
+    ANativeWindow *anw = NULL;
+    jobject s;
+    JNIEnv *env = Android_JNI_GetEnv();
+
+    s = (*env)->CallStaticObjectMethod(env, mActivityClass, midGetZinkSurface);
     if (s) {
         anw = ANativeWindow_fromSurface(env, s);
         (*env)->DeleteLocalRef(env, s);

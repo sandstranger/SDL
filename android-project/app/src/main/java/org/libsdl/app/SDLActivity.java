@@ -25,7 +25,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
 import android.text.InputType;
-import android.text.Selection;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.SparseArray;
@@ -35,6 +34,8 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.PointerIcon;
 import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -45,10 +46,13 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.Hashtable;
 import java.util.Locale;
@@ -210,6 +214,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     // Main components
     protected static SDLActivity mSingleton;
     protected static SDLSurface mSurface;
+    private static SurfaceView zinkSurface;
     protected static DummyEdit mTextEdit;
     protected static boolean mScreenKeyboardShown;
     protected static ViewGroup mLayout;
@@ -323,6 +328,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         Log.v(TAG, "Model: " + Build.MODEL);
         Log.v(TAG, "onCreate()");
         super.onCreate(savedInstanceState);
+        zinkSurface = new SurfaceView(this);
 
         try {
             Thread.currentThread().setName("SDLActivity");
@@ -399,10 +405,36 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         params.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         mSurface.setLayoutParams(params);
-
-        mLayout = new RelativeLayout(this);
+        zinkSurface.setLayoutParams(params);
+        mLayout = new FrameLayout(this);
         mLayout.setBackgroundColor(Color.BLACK);
+        mLayout.addView(zinkSurface);
         mLayout.addView(mSurface);
+        zinkSurface.setZOrderOnTop(false);
+        mSurface.setZOrderOnTop(true);
+
+        zinkSurface.getHolder().addCallback(new SurfaceHolder.Callback() {
+
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+            }
+
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+                DisplayMetrics displayMetrics = new DisplayMetrics();
+                getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+                int newHeight = displayMetrics.heightPixels;
+                int newWidth = displayMetrics.widthPixels;
+                SurfaceView view = zinkSurface;
+                if (view.getHolder() != null) {
+                    view.getHolder().setFixedSize(newWidth, newHeight);
+                }
+            }
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+            }
+        });
 
         // Get our current screen orientation and pass it down.
         mCurrentOrientation = SDLActivity.getCurrentOrientation();
@@ -1379,6 +1411,10 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         return SDLActivity.mSurface.getNativeSurface();
     }
 
+    public static Surface getZinkSurface() {
+        return SDLActivity.zinkSurface.getHolder().getSurface();
+    }
+
     // Input
 
     /**
@@ -2105,5 +2141,7 @@ class SDLClipboardHandler implements
     public void onPrimaryClipChanged() {
         SDLActivity.onNativeClipboardChanged();
     }
+
+    // Функция для зарисовки фона цветом
 }
 
