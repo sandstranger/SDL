@@ -129,23 +129,7 @@ static SDL_VideoDevice *Android_CreateDevice(void)
 
     device->free = Android_DeleteDevice;
 
-#ifdef SDL_VIDEO_OSMESA
-    if (!osmWasInit){
-        osm_init();
-        osmWasInit = true;
-    }
-
-    device->GL_LoadLibrary = Android_GLES_LoadLibrary;
-    device->GL_GetProcAddress = Android_GLES_GetProcAddress;
-    device->GL_UnloadLibrary = Android_GLES_UnloadLibrary;
-    device->GL_CreateContext = CreateGLContext;
-    device->GL_MakeCurrent = MakeCurrent;
-    device->GL_SetSwapInterval = SetSwapInterval;
-    device->GL_GetSwapInterval = GetSwapInterval;
-    device->GL_SwapWindow = SwapWindow;
-    device->GL_DeleteContext = DestroyContext;
-    /* GL pointers */
-#else SDL_VIDEO_OPENGL_EGL
+#if SDL_VIDEO_OPENGL_EGL
     device->GL_LoadLibrary = Android_GLES_LoadLibrary;
     device->GL_GetProcAddress = Android_GLES_GetProcAddress;
     device->GL_UnloadLibrary = Android_GLES_UnloadLibrary;

@@ -9,9 +9,16 @@
 #include "SDL_androidwindow.h"
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
+#include <pthread.h>
 #include "SDL_androidvideo.h"
+#include "SDL_surface.h"
+#include "SDL.h"
+#include "jni.h"
+#include "paths.h"
 #include "stb_image_write.h"
+//''#include "stb_image_write.h"
 
+const int frameDelay = 1000 / 60; //
 static ANativeWindow *nativeSurface;
 static ANativeWindow_Buffer buffer;
 static xxx3_osm_render_window_t *xxx3_osm;
@@ -23,39 +30,11 @@ static int _swapInterval;
 static int contextsIdGenerator;
 static int32_t last_stride;
 static GLubyte* *abuffer;
-// Its not in a .h file because it is not supposed to be used outsife of this file.
-void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval);
-
-bool osm_init(void) {
-    return dlsym_OSMesa();
-}
-/*
-void saveBufferToFile(GLubyte* buffer, int width, int height, int stride, const char* filename) {
-    // Буфер OSMesa интерпретируется построчно
-    GLubyte* correctedBuffer = malloc(width * height * 4);
-    for (int y = 0; y < height; y++) {
-        memcpy(correctedBuffer + (y * width * 4), buffer + (y * stride * 4), width * 4);
-    }
-
-    if (stbi_write_png(filename, width, height, 4, correctedBuffer, width * 4)) {
-        printf("Image saved to %s\n", filename);
-    } else {
-        printf("Failed to save image to %s\n", filename);
-    }
-
-    free(correctedBuffer);
-}*/
-
-void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
-    buffer.width = ANativeWindow_getWidth(nativeSurface);
-    buffer.height = ANativeWindow_getHeight(nativeSurface);
-    buf->bits = xxx3_no_render_buffer;
-    buf->stride = 0;
-}
-
-struct xxx3_osm_render_window_t* xxx3OsmGetCurrentContext() {
-    return xxx3_osm;
-}
+static SDL_Surface *framebuffer_surface;
+static bool bufferWasCreated;
+extern void load_vulkan(void);
+static pthread_t swapBuffersThread;
+static SDL_Window *sdlWindow;
 
 void* xxx3OsmCreateContext() {
     xxx3_osm_render_window_t *renderWindow = malloc(sizeof(xxx3_osm_render_window_t));
@@ -84,30 +63,63 @@ void* xxx3OsmCreateContext() {
     return renderWindow;
 }
 
-void xxx2_osm_apply_current_ll(ANativeWindow_Buffer* buf,xxx3_osm_render_window_t *renderWindow) {
-//        free(abuffer);
-        if (abuffer == NULL) {
-            abuffer = malloc(buf->width * buf->height * 8);
-        }
-        OSMesaMakeCurrent_p(renderWindow->context,
+void UpdateSdlSurface(GLubyte *buffer, int width, int height, int stride) {
+    SDL_LockSurface(framebuffer_surface);
+    framebuffer_surface->pixels = malloc(width * height * 4);
+    for (int y = 0; y < height; y++) {
+        memcpy(framebuffer_surface->pixels + (y * width * 4), buffer + (y * stride * 4), width * 4);
+    }
+    SDL_UnlockSurface(framebuffer_surface);
+    SDL_Surface* window_surface = SDL_GetWindowSurface(sdlWindow);
+    SDL_BlitSurface(framebuffer_surface, NULL, window_surface, NULL);
+    SDL_UpdateWindowSurface(sdlWindow);
+    SDL_FreeSurface(window_surface);
+    free(framebuffer_surface->pixels);
+}
+
+void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
+    buffer.width = ANativeWindow_getWidth(nativeSurface);
+    buffer.height = ANativeWindow_getHeight(nativeSurface);
+    buf->bits = xxx3_no_render_buffer;
+    buf->stride = 0;
+}
+
+void xxx2_osm_apply_current_ll(ANativeWindow_Buffer* buf) {
+    if (!bufferWasCreated) {
+        abuffer = malloc(framebuffer_surface->w * framebuffer_surface->h * 8);
+        bufferWasCreated = true;
+    }
+        OSMesaMakeCurrent_p(xxx3_osm->context,
                                 abuffer,
                                 GL_UNSIGNED_BYTE,
-                                buf->width,
-                                buf->height);
+                                framebuffer_surface->w,
+                                framebuffer_surface->h);
 
     if (buf->stride != last_stride)
         OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buf->stride);
     last_stride = buf->stride;
 }
-void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindow) {
+
+void xxx3OsmMakeCurrent(SDL_Window *window) {
+    if (hasCleaned){
+        return;
+    }
+
     if (!hasCleaned)
     {
+        sdlWindow = window;
+        framebuffer_surface = SDL_CreateRGBSurfaceWithFormat(0, window->w, window->h, 24, SDL_PIXELFORMAT_RGBA32);
+        if (!framebuffer_surface) {
+            __android_log_print(ANDROID_LOG_FATAL, osm_LogTag, "SDL_CreateWindowFramebuffer failed: %s\n", SDL_GetError());
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+        }
+
         SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
         printf("%s making current\n", osm_LogTag);
         nativeSurface = data->zinkWindow;
         ANativeWindow_acquire(nativeSurface);
-        ANativeWindow_setBuffersGeometry(nativeSurface, 0, 0, WINDOW_FORMAT_RGBA_8888);
-//        ANativeWindow_setBuffersGeometry(nativeSurface, 0,0, AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+        ANativeWindow_setBuffersGeometry(nativeSurface, 0, 0, WINDOW_FORMAT_RGBX_8888);
         ANativeWindow_lock(nativeSurface, &buffer, NULL);
     }
 
@@ -116,84 +128,65 @@ void xxx3OsmMakeCurrent(SDL_Window *window,xxx3_osm_render_window_t *renderWindo
         hasSetNoRendererBuffer = true;
         xxx3_osm_set_no_render_buffer(&buffer);
     }
-    xxx3_osm = renderWindow;
-    xxx2_osm_apply_current_ll(&buffer,renderWindow);
+    xxx2_osm_apply_current_ll(&buffer);
     OSMesaPixelStore_p(OSMESA_Y_UP, 0);
 
     if (!hasCleaned)
     {
-        hasCleaned = true;
         printf("%s vendor: %s\n", osm_LogTag, glGetString_p(GL_VENDOR));
         printf("%s renderer: %s\n", osm_LogTag, glGetString_p(GL_RENDERER));
         glClear_p(GL_COLOR_BUFFER_BIT);
         glClearColor_p(0.4f, 0.4f, 0.4f, 1.0f);  // Установить цвет фона
         glFinish_p();
         ANativeWindow_unlockAndPost(nativeSurface);
+        hasCleaned = true;
     }
 }
 
 void xxx3OsmSwapBuffers() {
+    if (!hasCleaned) return;
     ANativeWindow_lock(nativeSurface,&buffer, NULL);
     if (xxx3_osm) {
-      xxx2_osm_apply_current_ll(&buffer,xxx3_osm);
+      xxx2_osm_apply_current_ll(&buffer);
     }
     glFinish_p();
     ANativeWindow_unlockAndPost(nativeSurface);
+    UpdateSdlSurface(abuffer, framebuffer_surface->w, framebuffer_surface->h, buffer.stride);
 }
 
-void xxx3OsmSwapInterval(int interval) {
-    _swapInterval = interval;
-    if (nativeSurface != NULL)
-        setNativeWindowSwapInterval(nativeSurface, interval);
-}
-
-int MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
+void SetupOsMContext(SDL_Window *window)
 {
-    if (window && context) {
-        xxx3_osm_render_window_t *renderWindow = context;
-        xxx3OsmMakeCurrent(window,renderWindow);
-        return 0;
-    } else {
-        return -1;
+    if (window) {
+        xxx3OsmMakeCurrent(window);
     }
 }
 
-int GetSwapInterval (_THIS){
-    return _swapInterval;
-}
-
-int SetSwapInterval (_THIS,int swapInterval){
-    xxx3OsmSwapInterval(swapInterval);
-    return 0;
-}
-
-SDL_GLContext GetCurrentContext (void){
-    return xxx3OsmGetCurrentContext();
-}
-
-SDL_GLContext CreateGLContext (_THIS,SDL_Window *window){
-    return xxx3OsmCreateContext();
-}
-
-int SwapWindow(_THIS, SDL_Window *window){
+void SwapWindow(){
     SDL_LockMutex(Android_ActivityMutex);
     xxx3OsmSwapBuffers();
     SDL_UnlockMutex(Android_ActivityMutex);
-    return 0;
 }
 
-void DestroyContext (_THIS,SDL_GLContext context){
-    if (context!=NULL){
-        xxx3_osm_render_window_t *contextToDestroy = (xxx3_osm_render_window_t *) context;
-        if (contextToDestroy->id <0){
-            return;
+void* CustomSwapBuffersThread(void* arg){
+    while (true) {
+        Uint32 start = SDL_GetTicks();
+        SwapWindow();
+        Uint32 frameTime = SDL_GetTicks() - start;
+        if (frameTime < frameDelay) {
+            SDL_Delay(frameDelay - frameTime);
         }
-        xxx3_osm_render_window_t *currentContextWindow = (xxx3_osm_render_window_t *) GetCurrentContext();
-        if (currentContextWindow!=NULL && contextToDestroy->id == currentContextWindow->id){
-            OSMesaMakeCurrent_p(NULL, buffer.bits, GL_UNSIGNED_BYTE, buffer.width,
-                                buffer.height);
-            xxx3_osm = NULL;
-        }
-        OSMesaDestroyContext_p(contextToDestroy->context);
     }
+    return NULL;
+}
+
+bool osm_init(void) {
+    load_vulkan();
+    dlsym_OSMesa();
+    xxx3_osm = xxx3OsmCreateContext();
+    if (pthread_create(&swapBuffersThread, NULL, CustomSwapBuffersThread, NULL) != 0) {
+        printf("Error creating thread\n");
+        return false;
+    }
+
+    return true;
 }

@@ -906,6 +906,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     }
 
     // C functions we call
+    public static native void osmInit();
     public static native String nativeGetVersion();
     public static native int nativeSetupJNI();
     public static native int nativeRunMain(String library, String function, Object arguments);

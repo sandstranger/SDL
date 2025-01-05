@@ -33,7 +33,7 @@
 #include "../../core/android/SDL_android.h"
 
 #include <android/log.h>
-
+#include "osm_bridge.h"
 #include <dlfcn.h>
 
 int Android_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
@@ -72,7 +72,6 @@ int Android_GLES_SwapWindow(_THIS, SDL_Window *window)
     /*_this->egl_data->eglWaitNative(EGL_CORE_NATIVE_ENGINE);
     _this->egl_data->eglWaitGL();*/
     retval = SDL_EGL_SwapBuffers(_this, ((SDL_WindowData *)window->driverdata)->egl_surface);
-
     SDL_UnlockMutex(Android_ActivityMutex);
 
     return retval;

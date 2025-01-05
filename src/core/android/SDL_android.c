@@ -62,7 +62,7 @@
 #define ENCODING_PCM_8BIT  3
 #define ENCODING_PCM_16BIT 2
 #define ENCODING_PCM_FLOAT 4
-
+extern void osm_init (void);
 /* Java class SDLActivity */
 JNIEXPORT jstring JNICALL SDL_JAVA_INTERFACE(nativeGetVersion)(
     JNIEnv *env, jclass cls);
@@ -129,6 +129,9 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeAccel)(
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeClipboardChanged)(
     JNIEnv *env, jclass jcls);
 
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(osmInit)(
+        JNIEnv *env, jclass cls);
+
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeLowMemory)(
     JNIEnv *env, jclass cls);
 
@@ -194,6 +197,7 @@ static JNINativeMethod SDLActivity_tab[] = {
     { "onNativeAccel", "(FFF)V", SDL_JAVA_INTERFACE(onNativeAccel) },
     { "onNativeClipboardChanged", "()V", SDL_JAVA_INTERFACE(onNativeClipboardChanged) },
     { "nativeLowMemory", "()V", SDL_JAVA_INTERFACE(nativeLowMemory) },
+    { "osmInit", "()V", SDL_JAVA_INTERFACE(osmInit) },
     { "onNativeLocaleChanged", "()V", SDL_JAVA_INTERFACE(onNativeLocaleChanged) },
     { "nativeSendQuit", "()V", SDL_JAVA_INTERFACE(nativeSendQuit) },
     { "nativeQuit", "()V", SDL_JAVA_INTERFACE(nativeQuit) },
@@ -616,7 +620,6 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
     midIsScreenKeyboardShown = (*env)->GetStaticMethodID(env, mActivityClass, "isScreenKeyboardShown", "()Z");
     midIsTablet = (*env)->GetStaticMethodID(env, mActivityClass, "isTablet", "()Z");
     midManualBackButton = (*env)->GetStaticMethodID(env, mActivityClass, "manualBackButton", "()V");
-    unlockSurface = (*env)->GetStaticMethodID(env, mActivityClass, "unlockSurface", "()V");
     midMinimizeWindow = (*env)->GetStaticMethodID(env, mActivityClass, "minimizeWindow", "()V");
     midOpenURL = (*env)->GetStaticMethodID(env, mActivityClass, "openURL", "(Ljava/lang/String;)I");
     midRequestPermission = (*env)->GetStaticMethodID(env, mActivityClass, "requestPermission", "(Ljava/lang/String;I)V");
@@ -1223,6 +1226,12 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeLowMemory)(
     JNIEnv *env, jclass cls)
 {
     SDL_SendAppEvent(SDL_APP_LOWMEMORY);
+}
+
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(osmInit)(
+        JNIEnv *env, jclass cls)
+{
+    osm_init();
 }
 
 /* Locale

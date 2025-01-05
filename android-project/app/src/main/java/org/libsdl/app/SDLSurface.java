@@ -3,6 +3,7 @@ package org.libsdl.app;
 
 import android.content.Context;
 import android.content.pm.ActivityInfo;
+import android.graphics.Canvas;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -50,6 +51,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
             getHolder().setFixedSize(fixedWidth, fixedHeight);
         }
         getHolder().addCallback(this);
+
 
         setFocusable(true);
         setFocusableInTouchMode(true);

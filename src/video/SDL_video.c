@@ -1648,6 +1648,9 @@ static int SDL_DllNotSupported(const char *name)
 {
     return SDL_SetError("No dynamic %s support in current SDL video driver (%s)", name, _this->name);
 }
+#if SDL_VIDEO_OSMESA
+void SetupOsMContext(SDL_Window *window);
+#endif
 
 SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
 {
@@ -1849,6 +1852,9 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
 
     /* If the window was created fullscreen, make sure the mode code matches */
     SDL_UpdateFullscreenMode(window, FULLSCREEN_VISIBLE(window));
+#if SDL_VIDEO_OSMESA
+    SetupOsMContext(window);
+#endif
     return window;
 }
 
@@ -4159,25 +4165,13 @@ SDL_Window *SDL_GL_GetCurrentWindow(void)
     }
     return (SDL_Window *)SDL_TLSGet(_this->current_glwin_tls);
 }
-#if SDL_VIDEO_OSMESA
-extern SDL_GLContext GetCurrentContext (void);
-#endif
-
 SDL_GLContext SDL_GL_GetCurrentContext(void)
 {
-#if SDL_VIDEO_OSMESA
-    if (!_this) {
-        SDL_UninitializedVideo();
-        return NULL;
-    }
-    return GetCurrentContext();
-#else
     if (!_this) {
         SDL_UninitializedVideo();
         return NULL;
     }
     return (SDL_GLContext)SDL_TLSGet(_this->current_glctx_tls);
-#endif
 }
 
 void SDL_GL_GetDrawableSize(SDL_Window * window, int *w, int *h)

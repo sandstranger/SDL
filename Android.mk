@@ -10,7 +10,8 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := SDL2
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/include \
+	$(LOCAL_PATH)/../driver-helper/src/main/jni/driver_helper
 
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_C_INCLUDES)
 
@@ -80,7 +81,7 @@ LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare -DSDL_VIDEO_OSMESA
 
 LOCAL_CXXFLAGS += -std=gnu++11
 
-LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
+LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid $(LOCAL_PATH)/../driver-helper/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib/$(TARGET_ARCH_ABI)/libnsbypass.so
 LOCAL_LDFLAGS := -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld -Wl,--no-undefined
 
 ifeq ($(NDK_DEBUG),1)

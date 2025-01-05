@@ -222,9 +222,6 @@ struct ANativeWindow_real
 // endregion
 
 void setNativeWindowSwapInterval(struct ANativeWindow* nativeWindow, int swapInterval) {
-    if(!getenv("VSYNC_IN_ZINK")) {
-        return;
-    }
     struct ANativeWindow_real* nativeWindowReal = (struct ANativeWindow_real*) nativeWindow;
     if(nativeWindowReal->common.magic != ANDROID_NATIVE_WINDOW_MAGIC) {
         __android_log_print(ANDROID_LOG_WARN, "SwapIntervalNoEGL", "ANativeWindow magic does not match. Expected %i, got %i",
