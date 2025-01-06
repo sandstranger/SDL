@@ -47,7 +47,6 @@ public class ZinkSurface extends SurfaceView implements SurfaceHolder.Callback{
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
-        Log.d("ZINK SURFACE CREATED", "CALLED");
         SDLActivity.onZinkSurfaceCreated(holder.getSurface());
     }
 

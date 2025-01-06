@@ -36,8 +36,10 @@ static char xxx3_no_render_buffer[4];
 static const char* osm_LogTag = "[ XXX3 OSM Bridge ]";
 static int32_t last_stride;
 static GLubyte* *abuffer;
-static SDL_Surface *framebuffer_surface;
 static SDL_Window *sdlWindow;
+static SDL_Renderer* renderer;
+static SDL_Texture* renderTexture;
+static void *correctedBuffer = NULL;
 
 extern void load_vulkan(void);
 
@@ -66,22 +68,26 @@ void* xxx3OsmCreateContext() {
     return renderWindow;
 }
 
-void UpdateSdlSurface(GLubyte *buffer, int width, int height, int stride) {
-    if (framebuffer_surface == NULL){
-        return;
+void UpdateSdlRender(GLubyte *buffer, int width, int height, int stride) {
+    if (!correctedBuffer) {
+        correctedBuffer = malloc(width * height * 4);
+    }
+    for (int y = 0; y < height; y++) {
+        memcpy(correctedBuffer + (y * width * 4), buffer + (y * stride * 4), width * 4);
     }
 
-    SDL_LockSurface(framebuffer_surface);
-    if (!framebuffer_surface->pixels)
-        framebuffer_surface->pixels = malloc(width * height * 4);
-    for (int y = 0; y < height; y++) {
-        memcpy(framebuffer_surface->pixels + (y * width * 4), buffer + (y * stride * 4), width * 4);
+    if (SDL_UpdateTexture(renderTexture, NULL, correctedBuffer, width * 4) != 0) {
+        __android_log_print(ANDROID_LOG_VERBOSE, "ERROR", "SDL_UpdateTexture failed: %s", SDL_GetError());
     }
-    SDL_UnlockSurface(framebuffer_surface);
-    SDL_Surface* window_surface = SDL_GetWindowSurface(sdlWindow);
-    SDL_BlitSurface(framebuffer_surface, NULL, window_surface, NULL);
-    SDL_UpdateWindowSurface(sdlWindow);
-    SDL_FreeSurface(window_surface);
+
+    if (SDL_RenderClear(renderer) != 0) {
+        __android_log_print(ANDROID_LOG_VERBOSE, "ERROR", "SDL_RenderClear failed: %s", SDL_GetError());
+    }
+
+    if (SDL_RenderCopy(renderer, renderTexture, NULL, NULL) != 0) {
+        __android_log_print(ANDROID_LOG_VERBOSE, "ERROR", "SDL_RenderCopy failed: %s", SDL_GetError());
+    }
+    SDL_RenderPresent(renderer);
 }
 
 void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
@@ -93,13 +99,13 @@ void xxx3_osm_set_no_render_buffer(ANativeWindow_Buffer* buf) {
 
 void xxx2_osm_apply_current_ll(ANativeWindow_Buffer* buf) {
     if (!abuffer) {
-        abuffer = malloc(framebuffer_surface->w * framebuffer_surface->h * 6);
+        abuffer = malloc(sdlWindow->w * sdlWindow->h * 6);
     }
     OSMesaMakeCurrent_p(xxx3_osm->context,
                         abuffer,
                         GL_UNSIGNED_BYTE,
-                        framebuffer_surface->w,
-                        framebuffer_surface->h);
+                        sdlWindow->w,
+                        sdlWindow->h);
 
     if (buf->stride != last_stride)
         OSMesaPixelStore_p(OSMESA_ROW_LENGTH, buf->stride);
@@ -110,21 +116,17 @@ void xxx3OsmMakeCurrent(SDL_Window *window) {
     if (hasCleaned){
         return;
     }
+
     if (!hasCleaned)
     {
-        SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-        printf("%s making current\n", osm_LogTag);
         sdlWindow = window;
-        framebuffer_surface = SDL_CreateRGBSurfaceWithFormat(0, window->w, window->h, 32, SDL_PIXELFORMAT_RGBA32);
-        if (!framebuffer_surface) {
-            __android_log_print(ANDROID_LOG_FATAL, osm_LogTag, "SDL_CreateWindowFramebuffer failed: %s\n", SDL_GetError());
-            SDL_DestroyWindow(window);
+        renderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        renderTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, sdlWindow->w, sdlWindow->h);
+        if (!renderer) {
+            __android_log_print(ANDROID_LOG_VERBOSE, osm_LogTag, "Renderer creation failed: %s\n", SDL_GetError());
             SDL_Quit();
         }
-
-        ANativeWindow_acquire(nativeSurface);
-        ANativeWindow_setBuffersGeometry(nativeSurface, 0, 0, WINDOW_FORMAT_RGBX_8888);
-        ANativeWindow_lock(nativeSurface, &buffer, NULL);
+        printf("%s making current\n", osm_LogTag);
     }
 
     if (!hasSetNoRendererBuffer)
@@ -157,7 +159,7 @@ void xxx3OsmSwapBuffers() {
     if (nativeSurface) {
         ANativeWindow_unlockAndPost(nativeSurface);
     }
-    UpdateSdlSurface(abuffer, framebuffer_surface->w, framebuffer_surface->h, buffer.stride);
+    UpdateSdlRender(abuffer,sdlWindow->w,sdlWindow->h,buffer.stride);
 }
 
 void SetupOsMContext(SDL_Window *window)
