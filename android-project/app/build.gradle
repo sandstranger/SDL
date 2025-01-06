@@ -50,8 +50,10 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
 }
+preBuild.dependsOn ':driver-helper:build'
 
 dependencies {
+    implementation(project(":driver-helper"))
     implementation libs.kotlin.stdlib
     implementation libs.kotlinx.coroutines.core
     implementation libs.androidx.appcompat
