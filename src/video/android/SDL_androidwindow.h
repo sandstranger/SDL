@@ -44,7 +44,6 @@ typedef struct
 #endif
     SDL_bool backup_done;
     ANativeWindow *native_window;
-    ANativeWindow *zinkWindow;
 } SDL_WindowData;
 
 #endif /* SDL_androidwindow_h_ */

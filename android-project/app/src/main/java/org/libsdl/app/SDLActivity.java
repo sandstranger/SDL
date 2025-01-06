@@ -328,7 +328,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         Log.v(TAG, "Model: " + Build.MODEL);
         Log.v(TAG, "onCreate()");
         super.onCreate(savedInstanceState);
-        zinkSurface = new SurfaceView(this);
+        zinkSurface = new ZinkSurface(this);
 
         try {
             Thread.currentThread().setName("SDLActivity");
@@ -412,29 +412,6 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         mLayout.addView(mSurface);
         zinkSurface.setZOrderOnTop(false);
         mSurface.setZOrderOnTop(true);
-
-        zinkSurface.getHolder().addCallback(new SurfaceHolder.Callback() {
-
-            @Override
-            public void surfaceCreated(@NonNull SurfaceHolder holder) {
-            }
-
-            @Override
-            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
-                DisplayMetrics displayMetrics = new DisplayMetrics();
-                getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-                int newHeight = displayMetrics.heightPixels;
-                int newWidth = displayMetrics.widthPixels;
-                SurfaceView view = zinkSurface;
-                if (view.getHolder() != null) {
-                    view.getHolder().setFixedSize(newWidth, newHeight);
-                }
-            }
-
-            @Override
-            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-            }
-        });
 
         // Get our current screen orientation and pass it down.
         mCurrentOrientation = SDLActivity.getCurrentOrientation();
@@ -907,6 +884,8 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
     // C functions we call
     public static native void osmInit();
+    public static native void onZinkSurfaceCreated(Surface surface);
+    public static native void onZinkSurfaceDestroyed();
     public static native String nativeGetVersion();
     public static native int nativeSetupJNI();
     public static native int nativeRunMain(String library, String function, Object arguments);

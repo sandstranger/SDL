@@ -8,7 +8,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void SwapSufaceWindow();
+void SwapSurfaceWindow();
 #ifdef __cplusplus
 }
 #endif

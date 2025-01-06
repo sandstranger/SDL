@@ -1054,7 +1054,6 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeSurfaceCreated)(JNIEnv *env, j
         SDL_WindowData *data = (SDL_WindowData *)Android_Window->driverdata;
 
         data->native_window = Android_JNI_GetNativeWindow();
-        data->zinkWindow = Android_JNI_GetZinkSurface();
         if (data->native_window == NULL) {
             SDL_SetError("Could not fetch native window from UI thread");
         }
@@ -1120,11 +1119,6 @@ retry:
         if (data->native_window) {
             ANativeWindow_release(data->native_window);
             data->native_window = NULL;
-        }
-
-        if (data->zinkWindow) {
-            ANativeWindow_release(data->zinkWindow);
-            data->zinkWindow = NULL;
         }
 
         /* GL Context handling is done in the event loop because this function is run from the Java thread */
