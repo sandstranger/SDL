@@ -49,6 +49,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <jni.h>
 
 #define SDL_JAVA_PREFIX                               org_libsdl_app
 #define CONCAT1(prefix, class, function)              CONCAT2(prefix, class, function)
@@ -62,6 +63,33 @@
 #define ENCODING_PCM_8BIT  3
 #define ENCODING_PCM_16BIT 2
 #define ENCODING_PCM_FLOAT 4
+
+ int Java_org_libsdl_app_SDLActivity_getMouseX(JNIEnv *env, jclass cls, jobject obj) {
+    int ret = 0;
+    SDL_GetMouseState(&ret, NULL);
+    return ret;
+}
+
+
+int Java_org_libsdl_app_SDLActivity_getMouseY(JNIEnv *env, jclass cls, jobject obj) {
+    int ret = 0;
+    SDL_GetMouseState(NULL, &ret);
+    return ret;
+}
+
+int Java_org_libsdl_app_SDLActivity_isMouseShown(JNIEnv *env, jclass cls, jobject obj) {
+    return SDL_ShowCursor(SDL_QUERY);
+}
+
+extern SDL_Window *Android_Window;
+void Java_org_libsdl_app_SDLActivity_sendRelativeMouseMotion(JNIEnv *env, jclass cls, int x, int y) {
+    SDL_SendMouseMotion(Android_Window, 0, 1, x, y);
+}
+
+void Java_org_libsdl_app_SDLActivity_sendMouseButton(JNIEnv *env, jclass cls, int state, int button) {
+    SDL_SendMouseButton(Android_Window, 0, state, button);
+}
+
 
 /* Java class SDLActivity */
 JNIEXPORT jstring JNICALL SDL_JAVA_INTERFACE(nativeGetVersion)(

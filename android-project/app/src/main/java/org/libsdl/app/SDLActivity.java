@@ -874,6 +874,11 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     }
 
     // C functions we call
+    public static native int getMouseX();
+    public static native int getMouseY();
+    public static native int isMouseShown();
+    public static native void sendRelativeMouseMotion(int x, int y);
+    public static native void sendMouseButton(int state, int button);
     public static native String nativeGetVersion();
     public static native int nativeSetupJNI();
     public static native int nativeRunMain(String library, String function, Object arguments);
