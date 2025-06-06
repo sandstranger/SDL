@@ -76,9 +76,9 @@ LOCAL_CFLAGS += \
 	-Wkeyword-macro \
 
 # Warnings we haven't fixed (yet)
-LOCAL_CFLAGS += -O2 -Wno-unused-parameter -Wno-sign-compare
+LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare
 
-LOCAL_CXXFLAGS += -O2 -std=gnu++11
+LOCAL_CXXFLAGS += -std=gnu++11
 
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
 LOCAL_LDFLAGS := -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld -Wl,--no-undefined
