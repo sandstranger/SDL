@@ -556,8 +556,9 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode)
     }
 #if defined(__ANDROID__)
 #ifdef HAVE_STDIO_H
+    const char* forcedPath = getenv("FORCE_FILE_PATH");
     /* Try to open the file on the filesystem first */
-    if (*file == '/') {
+    if (*file == '/' || (forcedPath && strcmp(forcedPath, "true") == 0)) {
         FILE *fp = fopen(file, mode);
         if (fp) {
             if (!IsRegularFileOrPipe(fp)) {
