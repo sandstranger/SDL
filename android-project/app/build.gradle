@@ -13,15 +13,16 @@ android {
         targetSdkVersion versions.target_sdk
 
         ndk {
-            abiFilters = abi_filters
+            abiFilters = []
+            abiFilters.addAll(abi_filters)
         }
+
         externalNativeBuild {
-            ndkBuild {
-                arguments += build_flags.ndk_build_platform
-                arguments += build_flags.compiling_arguments
-                arguments += build_flags.none_build_id_flag
-                cFlags  = build_flags.common_c_flags
-                cppFlags = build_flags.common_cpp_flags
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-$versions.native_android_platform_version",
+                    "-DCMAKE_CXX_FLAGS=-O3 -flto=thin",
+                    "-DCMAKE_C_FLAGS=-O3 -flto=thin",
+                    "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld"
             }
         }
     }
@@ -32,8 +33,9 @@ android {
         }
     }
     externalNativeBuild {
-        ndkBuild {
-            path "$rootDir/sdl3/Android.mk"
+        cmake {
+            path "$rootDir/sdl3/CMakeLists.txt"
+            version versions.cmake_version
         }
     }
     buildToolsVersion versions.build_tools_version
