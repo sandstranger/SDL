@@ -193,7 +193,7 @@ Rather than iterating over audio devices using a device index, there are new fun
         if (devices) {
             for (i = 0; i < num_devices; ++i) {
                 SDL_AudioDeviceID instance_id = devices[i];
-                SDL_Log("AudioDevice %" SDL_PRIu32 ": %s\n", instance_id, SDL_GetAudioDeviceName(instance_id));
+                SDL_Log("AudioDevice %" SDL_PRIu32 ": %s", instance_id, SDL_GetAudioDeviceName(instance_id));
             }
             SDL_free(devices);
         }
@@ -399,8 +399,6 @@ should be changed to:
     SDL_Keymod mod = event.key.mod;
 ```
 
-The keycode in key events is affected by modifiers by default. e.g. pressing the A key would generate the keycode `SDLK_A`, or 'a', and pressing it while holding the shift key would generate the keycode `SDLK_A`, or 'A'. This behavior can be customized with `SDL_HINT_KEYCODE_OPTIONS`.
-
 The gamepad event structures caxis, cbutton, cdevice, ctouchpad, and csensor have been renamed gaxis, gbutton, gdevice, gtouchpad, and gsensor.
 
 The mouseX and mouseY fields of SDL_MouseWheelEvent have been renamed mouse_x and mouse_y.
@@ -413,7 +411,7 @@ The iscapture field of SDL_AudioDeviceEvent has been renamed recording.
 
 SDL_QUERY, SDL_IGNORE, SDL_ENABLE, and SDL_DISABLE have been removed. You can use the functions SDL_SetEventEnabled() and SDL_EventEnabled() to set and query event processing state.
 
-SDL_AddEventWatch() now returns SDL_FALSE_ if it fails because it ran out of memory and couldn't add the event watch callback.
+SDL_AddEventWatch() now returns false if it fails because it ran out of memory and couldn't add the event watch callback.
 
 SDL_RegisterEvents() now returns 0 if it couldn't allocate any user events.
 
@@ -613,6 +611,9 @@ The following enums have been renamed:
 The following structures have been renamed:
 * SDL_GameController => SDL_Gamepad
 
+The following structures have been removed:
+* SDL_GameControllerButtonBind - replaced with SDL_GamepadBinding
+
 The following functions have been renamed:
 * SDL_GameControllerAddMapping() => SDL_AddGamepadMapping()
 * SDL_GameControllerAddMappingsFromFile() => SDL_AddGamepadMappingsFromFile()
@@ -751,7 +752,7 @@ Rather than iterating over haptic devices using device index, there is a new fun
         if (haptics) {
             for (i = 0; i < num_haptics; ++i) {
                 SDL_HapticID instance_id = haptics[i];
-                SDL_Log("Haptic %" SDL_PRIu32 ": %s\n", instance_id, SDL_GetHapticNameForID(instance_id));
+                SDL_Log("Haptic %" SDL_PRIu32 ": %s", instance_id, SDL_GetHapticNameForID(instance_id));
             }
             SDL_free(haptics);
         }
@@ -805,16 +806,18 @@ The environment variables SDL_VIDEO_X11_WMCLASS and SDL_VIDEO_WAYLAND_WMCLASS ha
 The environment variable AUDIODEV is used exclusively to specify the audio device for the OSS and NetBSD audio drivers. Its use in the ALSA driver has been replaced with the hint SDL_HINT_AUDIO_ALSA_DEFAULT_DEVICE and in the sndio driver with the environment variable AUDIODEVICE.
 
 The following hints have been renamed:
-* SDL_HINT_VIDEODRIVER => SDL_HINT_VIDEO_DRIVER
-* SDL_HINT_AUDIODRIVER => SDL_HINT_AUDIO_DRIVER
 * SDL_HINT_ALLOW_TOPMOST => SDL_HINT_WINDOW_ALLOW_TOPMOST
+* SDL_HINT_AUDIODRIVER => SDL_HINT_AUDIO_DRIVER
 * SDL_HINT_DIRECTINPUT_ENABLED => SDL_HINT_JOYSTICK_DIRECTINPUT
 * SDL_HINT_GDK_TEXTINPUT_DEFAULT => SDL_HINT_GDK_TEXTINPUT_DEFAULT_TEXT
 * SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE => SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE
+* SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE => SDL_HINT_JOYSTICK_ENHANCED_REPORTS
+* SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE => SDL_HINT_JOYSTICK_ENHANCED_REPORTS
 * SDL_HINT_LINUX_DIGITAL_HATS => SDL_HINT_JOYSTICK_LINUX_DIGITAL_HATS
 * SDL_HINT_LINUX_HAT_DEADZONES => SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
 * SDL_HINT_LINUX_JOYSTICK_CLASSIC => SDL_HINT_JOYSTICK_LINUX_CLASSIC
 * SDL_HINT_LINUX_JOYSTICK_DEADZONES => SDL_HINT_JOYSTICK_LINUX_DEADZONES
+* SDL_HINT_VIDEODRIVER => SDL_HINT_VIDEO_DRIVER
 * SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP => SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE
 
 The following hints have been removed:
@@ -917,7 +920,7 @@ Rather than iterating over joysticks using device index, there is a new function
                 const char *name = SDL_GetJoystickNameForID(instance_id);
                 const char *path = SDL_GetJoystickPathForID(instance_id);
 
-                SDL_Log("Joystick %" SDL_PRIu32 ": %s%s%s VID 0x%.4x, PID 0x%.4x\n",
+                SDL_Log("Joystick %" SDL_PRIu32 ": %s%s%s VID 0x%.4x, PID 0x%.4x",
                         instance_id, name ? name : "Unknown", path ? ", " : "", path ? path : "", SDL_GetJoystickVendorForID(instance_id), SDL_GetJoystickProductForID(instance_id));
             }
             SDL_free(joysticks);
@@ -1030,6 +1033,9 @@ The following structures have been removed:
 ## SDL_keycode.h
 
 SDL_Keycode is now Uint32 and the SDLK_* constants are now defines instead of an enum, to more clearly reflect that they are a subset of the possible values of an SDL_Keycode.
+
+In addition to the `SDLK_SCANCODE_MASK` bit found on key codes that directly map to scancodes, there is now the
+`SDLK_EXTENDED_MASK` bit used to denote key codes that don't have a corresponding scancode, and aren't a unicode value.
 
 The following symbols have been removed:
 
@@ -1262,6 +1268,7 @@ The following symbols have been renamed:
 The following functions have been removed:
 * SDL_FreeFormat()
 * SDL_SetPixelFormatPalette()
+* SDL_CalculateGammaRamp()
 
 The following macros have been removed:
 * SDL_Colour - use SDL_Color instead
@@ -1455,7 +1462,7 @@ The following symbols have been removed:
 * SDL_RENDERER_PRESENTVSYNC - replaced with SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER during renderer creation and SDL_PROP_RENDERER_VSYNC_NUMBER after renderer creation
 * SDL_RENDERER_SOFTWARE - you can check whether the name of the renderer is `SDL_SOFTWARE_RENDERER`
 * SDL_RENDERER_TARGETTEXTURE - all renderers support target texture functionality
-* SDL_ScaleModeBest = use SDL_SCALEMODE_LINEAR instead
+* SDL_ScaleModeBest - use SDL_SCALEMODE_LINEAR instead
 
 ## SDL_rwops.h
 
@@ -1692,7 +1699,7 @@ Rather than iterating over sensors using device index, there is a new function S
         SDL_SensorID *sensors = SDL_GetSensors(&num_sensors);
         if (sensors) {
             for (i = 0; i < num_sensors; ++i) {
-                SDL_Log("Sensor %" SDL_PRIu32 ": %s, type %d, platform type %d\n",
+                SDL_Log("Sensor %" SDL_PRIu32 ": %s, type %d, platform type %d",
                         sensors[i],
                         SDL_GetSensorNameForID(sensors[i]),
                         SDL_GetSensorTypeForID(sensors[i]),
@@ -1841,8 +1848,6 @@ SDL_BlitSurface() and SDL_BlitSurfaceScaled() now have a const `dstrect` paramet
 
 SDL_BlitSurfaceScaled() and SDL_BlitSurfaceUncheckedScaled() now take a scale parameter.
 
-SDL_SoftStretch() now takes a scale parameter.
-
 SDL_PixelFormat is used instead of Uint32 for API functions that refer to pixel format by enumerated value.
 
 SDL_SetSurfaceColorKey() takes an bool to enable and disable colorkey. RLE acceleration isn't controlled by the parameter, you should use SDL_SetSurfaceRLE() to change that separately.
@@ -1876,8 +1881,8 @@ The following functions have been removed:
 * SDL_GetYUVConversionMode()
 * SDL_GetYUVConversionModeForResolution()
 * SDL_SetYUVConversionMode() - use SDL_SetSurfaceColorspace() to set the surface colorspace and SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER with SDL_CreateTextureWithProperties() to set the texture colorspace. The default colorspace for YUV pixel formats is SDL_COLORSPACE_JPEG.
-* SDL_SoftStretch() - use SDL_BlitSurfaceScaled() with SDL_SCALEMODE_NEAREST
-* SDL_SoftStretchLinear() - use SDL_BlitSurfaceScaled() with SDL_SCALEMODE_LINEAR
+* SDL_SoftStretch() - use SDL_StretchSurface() with SDL_SCALEMODE_NEAREST
+* SDL_SoftStretchLinear() - use SDL_StretchSurface() with SDL_SCALEMODE_LINEAR
 
 The following symbols have been renamed:
 * SDL_PREALLOC => SDL_SURFACE_PREALLOCATED
@@ -2117,7 +2122,7 @@ Rather than iterating over displays using display index, there is a new function
                 SDL_DisplayID instance_id = displays[i];
                 const char *name = SDL_GetDisplayName(instance_id);
 
-                SDL_Log("Display %" SDL_PRIu32 ": %s\n", instance_id, name ? name : "Unknown");
+                SDL_Log("Display %" SDL_PRIu32 ": %s", instance_id, name ? name : "Unknown");
             }
             SDL_free(displays);
         }
@@ -2163,7 +2168,7 @@ Rather than iterating over display modes using an index, there is a new function
     if (modes) {
         for (i = 0; i < num_modes; ++i) {
             SDL_DisplayMode *mode = modes[i];
-            SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz\n",
+            SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz",
                     display, i, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
         }
         SDL_free(modes);
@@ -2177,7 +2182,7 @@ Windows now have an explicit fullscreen mode that is set, using SDL_SetWindowFul
 
 SDL_WINDOW_FULLSCREEN_DESKTOP has been removed, and you can call SDL_GetWindowFullscreenMode() to see whether an exclusive fullscreen mode will be used or the borderless fullscreen desktop mode will be used when the window is fullscreen.
 
-SDL_SetWindowBrightness and SDL_SetWindowGammaRamp have been removed from the API, because they interact poorly with modern operating systems and aren't able to limit their effects to the SDL window.
+SDL_SetWindowBrightness(), SDL_GetWindowBrightness, SDL_SetWindowGammaRamp(), and SDL_GetWindowGammaRamp have been removed from the API, because they interact poorly with modern operating systems and aren't able to limit their effects to the SDL window.
 
 Programs which have access to shaders can implement more robust versions of those functions using custom shader code rendered as a post-process effect.
 
@@ -2216,13 +2221,21 @@ The following functions have been removed:
 * SDL_GetNumVideoDisplays() - replaced with SDL_GetDisplays()
 * SDL_SetWindowGrab() - use SDL_SetWindowMouseGrab() instead, along with SDL_SetWindowKeyboardGrab() if you also set SDL_HINT_GRAB_KEYBOARD.
 * SDL_GetWindowGrab() - use SDL_GetWindowMouseGrab() instead, along with SDL_GetWindowKeyboardGrab() if you also set SDL_HINT_GRAB_KEYBOARD.
-* SDL_GetWindowData() - use SDL_GetWindowProperties() instead
-* SDL_SetWindowData() - use SDL_GetWindowProperties() instead
+* SDL_GetWindowData() - use SDL_GetPointerProperty() instead, along with SDL_GetWindowProperties()
+* SDL_SetWindowData() - use SDL_SetPointerProperty() instead, along with SDL_GetWindowProperties()
 * SDL_CreateWindowFrom() - use SDL_CreateWindowWithProperties() with the properties that allow you to wrap an existing window
 * SDL_SetWindowInputFocus() - use SDL_RaiseWindow() instead
 * SDL_SetWindowModalFor() - use SDL_SetWindowParent() with SDL_SetWindowModal() instead
+* SDL_SetWindowBrightness() - use a shader or other in-game effect.
+* SDL_GetWindowBrightness() - use a shader or other in-game effect.
+* SDL_SetWindowGammaRamp() - use a shader or other in-game effect.
+* SDL_GetWindowGammaRamp() - use a shader or other in-game effect.
 
 The SDL_Window id type is named SDL_WindowID
+
+The following environment variables have been removed:
+* SDL_VIDEO_GL_DRIVER - replaced with the hint SDL_HINT_OPENGL_LIBRARY
+* SDL_VIDEO_EGL_DRIVER - replaced with the hint SDL_HINT_EGL_LIBRARY
 
 The following symbols have been renamed:
 * SDL_DISPLAYEVENT_DISCONNECTED => SDL_EVENT_DISPLAY_REMOVED

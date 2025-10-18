@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -78,7 +78,18 @@
 #ifndef _DARWIN_C_SOURCE
 #define _DARWIN_C_SOURCE 1 // for memset_pattern4()
 #endif
+#include <Availability.h>
+
+#ifndef __IPHONE_OS_VERSION_MAX_ALLOWED
+#define __IPHONE_OS_VERSION_MAX_ALLOWED 0
 #endif
+#ifndef __APPLETV_OS_VERSION_MAX_ALLOWED
+#define __APPLETV_OS_VERSION_MAX_ALLOWED 0
+#endif
+#ifndef __MAC_OS_X_VERSION_MAX_ALLOWED
+#define __MAC_OS_X_VERSION_MAX_ALLOWED 0
+#endif
+#endif // SDL_PLATFORM_APPLE
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -180,11 +191,27 @@
 #define SDL_VIDEO_RENDER_SW 1
 #endif
 
+/* STB image conversion */
+#if !defined(SDL_HAVE_STB) && !defined(SDL_LEAN_AND_MEAN)
+#define SDL_HAVE_STB 1
+#endif
+
 /* YUV formats
    - handling of YUV surfaces
    - blitting and conversion functions */
 #if !defined(SDL_HAVE_YUV) && !defined(SDL_LEAN_AND_MEAN)
 #define SDL_HAVE_YUV 1
+#endif
+
+#ifdef SDL_CAMERA_DISABLED
+#undef SDL_CAMERA_DRIVER_ANDROID
+#undef SDL_CAMERA_DRIVER_COREMEDIA
+#undef SDL_CAMERA_DRIVER_DUMMY
+#undef SDL_CAMERA_DRIVER_EMSCRIPTEN
+#undef SDL_CAMERA_DRIVER_MEDIAFOUNDATION
+#undef SDL_CAMERA_DRIVER_PIPEWIRE
+#undef SDL_CAMERA_DRIVER_V4L2
+#undef SDL_CAMERA_DRIVER_VITA
 #endif
 
 #ifdef SDL_RENDER_DISABLED
@@ -217,6 +244,10 @@
 #define SDL_EndThreadFunction NULL
 #endif
 
+#ifdef SDL_NOLONGLONG
+#error We cannot build a valid SDL3 library without long long support
+#endif
+
 /* Enable internal definitions in SDL API headers */
 #define SDL_INTERNAL
 
@@ -233,6 +264,43 @@ extern "C" {
 
 #include "SDL_utils_c.h"
 #include "SDL_hashtable.h"
+
+/* SDL_ExitProcess is not declared in any public header, although
+   it is shared between some parts of SDL, because we don't want
+   anything calling it without an extremely good reason. */
+extern SDL_NORETURN void SDL_ExitProcess(int exitcode);
+
+#ifdef HAVE_LIBC
+#define SDL_abort() abort()
+#else
+#define SDL_abort() do {                                        \
+        SDL_TriggerBreakpoint();                                \
+        SDL_ExitProcess(42);                                    \
+    } while (0)
+#endif
+
+#define PUSH_SDL_ERROR() \
+    { char *_error = SDL_strdup(SDL_GetError());
+
+#define POP_SDL_ERROR() \
+    SDL_SetError("%s", _error); SDL_free(_error); }
+
+#if defined(SDL_DISABLE_INVALID_PARAMS)
+#ifdef DEBUG
+// If you define SDL_DISABLE_INVALID_PARAMS, you're promising that you'll
+// never pass an invalid parameter to SDL, since it may crash or lead to
+// hard to diagnose bugs. Let's assert that this is true in debug builds.
+#define OBJECT_VALIDATION_REQUIRED
+#define CHECK_PARAM(invalid) SDL_assert_always(!(invalid)); if (false)
+#else
+#define CHECK_PARAM(invalid) if (false)
+#endif
+#elif defined(SDL_ASSERT_INVALID_PARAMS)
+#define OBJECT_VALIDATION_REQUIRED
+#define CHECK_PARAM(invalid) SDL_assert_always(!(invalid)); if (invalid)
+#else
+#define CHECK_PARAM(invalid) if (invalid)
+#endif
 
 // Do any initialization that needs to happen before threads are started
 extern void SDL_InitMainThread(void);

@@ -1,23 +1,28 @@
 plugins {
-    alias(libs.plugins.jetbrains.kotlin.android)
+     id 'com.android.application'
 }
 
-apply plugin: 'com.android.library'
+def buildWithCMake = project.hasProperty('BUILD_WITH_CMAKE');
 
 android {
-    namespace "org.libsdl.app"
-    compileSdkVersion versions.target_sdk
+    namespace = "org.libsdl.app"
+    compileSdkVersion 35
+    ndkVersion = "28.2.13676358"
     defaultConfig {
-        minSdkVersion versions.min_sdk
-        targetSdkVersion versions.target_sdk
-        ndk {
-            abiFilters = abi_filters
-        }
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
         externalNativeBuild {
             ndkBuild {
-                arguments build_flags.ndk_build_args
-                cFlags  = build_flags.common_c_flags
-                cppFlags = build_flags.common_cpp_flags
+                arguments "APP_PLATFORM=android-21"
+                // abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+                abiFilters 'arm64-v8a'
+            }
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-21", "-DANDROID_STL=c++_static"
+                // abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+                abiFilters 'arm64-v8a'
             }
         }
     }
@@ -27,34 +32,32 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    applicationVariants.all { variant ->
+        tasks["merge${variant.name.capitalize()}Assets"]
+            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    }
     if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
         sourceSets.main {
             jniLibs.srcDir 'libs'
         }
         externalNativeBuild {
-            ndkBuild {
-                path "$rootDir/sdl2/Android.mk"
+            if (buildWithCMake) {
+                cmake {
+                    path 'jni/CMakeLists.txt'
+                }
+            } else {
+                ndkBuild {
+                    path 'jni/Android.mk'
+                }
             }
         }
+
     }
     lint {
-        abortOnError false
-    }
-
-    buildToolsVersion versions.build_tools_version
-    ndkVersion versions.ndk_version
-    kotlinOptions {
-        jvmTarget = '11'
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        abortOnError = false
     }
 }
 
 dependencies {
-    implementation libs.kotlin.stdlib
-    implementation libs.kotlinx.coroutines.core
-    implementation libs.androidx.appcompat
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 }

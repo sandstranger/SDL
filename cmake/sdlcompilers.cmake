@@ -34,7 +34,7 @@ function(SDL_AddCommonCompilerFlags TARGET)
     cmake_push_check_state()
     check_c_compiler_flag("/W3" COMPILER_SUPPORTS_W3)
     if(COMPILER_SUPPORTS_W3)
-      target_compile_options(${TARGET} PRIVATE "/W3")
+      target_compile_options(${TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:/W3>")
     endif()
     cmake_pop_check_state()
   endif()
@@ -131,7 +131,7 @@ function(SDL_AddCommonCompilerFlags TARGET)
     if(MSVC)
       check_c_compiler_flag(/WX HAVE_WX)
       if(HAVE_WX)
-        target_compile_options(${TARGET} PRIVATE "/WX")
+        target_compile_options(${TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:/WX>")
       endif()
     elseif(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QNX)
       check_c_compiler_flag(-Werror HAVE_WERROR)
@@ -159,4 +159,64 @@ function(SDL_AddCommonCompilerFlags TARGET)
       sdl_target_compile_option_all_languages(${TARGET} "-fdiagnostics-color=always")
     endif()
   endif()
+endfunction()
+
+function(check_x86_source_compiles BODY VAR)
+  if(ARGN)
+    message(FATAL_ERROR "Unknown arguments: ${ARGN}")
+  endif()
+  if(APPLE_MULTIARCH AND (SDL_CPU_X86 OR SDL_CPU_X64))
+    set(test_conditional 1)
+  else()
+    set(test_conditional 0)
+  endif()
+  check_c_source_compiles("
+    #if ${test_conditional}
+    # if defined(__i386__) || defined(__x86_64__)
+    #  define test_enabled 1
+    # else
+    #  define test_enabled 0 /* feign success in Apple multi-arch configs */
+    # endif
+    #else                    /* test normally */
+    # define test_enabled 1
+    #endif
+    #if test_enabled
+    ${BODY}
+    #else
+    int main(int argc, char *argv[]) {
+      (void)argc;
+      (void)argv;
+      return 0;
+    }
+    #endif" ${VAR})
+endfunction()
+
+function(check_arm_source_compiles BODY VAR)
+  if(ARGN)
+    message(FATAL_ERROR "Unknown arguments: ${ARGN}")
+  endif()
+  if(APPLE_MULTIARCH AND (SDL_CPU_ARM32 OR SDL_CPU_ARM64))
+    set(test_conditional 1)
+  else()
+    set(test_conditional 0)
+  endif()
+  check_c_source_compiles("
+    #if ${test_conditional}
+    # if defined(__arm__) || defined(__aarch64__)
+    #  define test_enabled 1
+    # else
+    #  define test_enabled 0 /* feign success in Apple multi-arch configs */
+    # endif
+    #else                    /* test normally */
+    # define test_enabled 1
+    #endif
+    #if test_enabled
+    ${BODY}
+    #else
+    int main(int argc, char *argv[]) {
+      (void)argc;
+      (void)argv;
+      return 0;
+    }
+    #endif" ${VAR})
 endfunction()

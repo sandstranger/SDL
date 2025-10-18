@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -54,13 +54,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
     if (mode) {
-        SDL_Log("Screen BPP    : %d\n", SDL_BITSPERPIXEL(mode->format));
+        SDL_Log("Screen BPP    : %d", SDL_BITSPERPIXEL(mode->format));
     }
     SDL_GetWindowSize(state->windows[0], &dw, &dh);
-    SDL_Log("Window Size   : %d,%d\n", dw, dh);
+    SDL_Log("Window Size   : %d,%d", dw, dh);
     SDL_GetWindowSizeInPixels(state->windows[0], &dw, &dh);
-    SDL_Log("Draw Size     : %d,%d\n", dw, dh);
-    SDL_Log("\n");
+    SDL_Log("Draw Size     : %d,%d", dw, dh);
+    SDL_Log("%s", "");
 
     then = SDL_GetTicks();
 
@@ -119,7 +119,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     /* Print out some timing information */
     const Uint64 now = SDL_GetTicks();
     if (now > then) {
-        SDL_Log("%2.2f frames per second\n", ((double)frames * 1000) / (now - then));
+        SDL_Log("%2.2f frames per second", ((double)frames * 1000) / (now - then));
     }
 
 	SDL_ReleaseWindowFromGPUDevice(gpu_device, state->windows[0]);

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,23 @@
 /**
  * # CategoryFilesystem
  *
- * SDL Filesystem API.
+ * SDL offers an API for examining and manipulating the system's filesystem.
+ * This covers most things one would need to do with directories, except for
+ * actual file I/O (which is covered by [CategoryIOStream](CategoryIOStream)
+ * and [CategoryAsyncIO](CategoryAsyncIO) instead).
+ *
+ * There are functions to answer necessary path questions:
+ *
+ * - Where is my app's data? SDL_GetBasePath().
+ * - Where can I safely write files? SDL_GetPrefPath().
+ * - Where are paths like Downloads, Desktop, Music? SDL_GetUserFolder().
+ * - What is this thing at this location? SDL_GetPathInfo().
+ * - What items live in this folder? SDL_EnumerateDirectory().
+ * - What items live in this folder by wildcard? SDL_GlobDirectory().
+ * - What is my current working directory? SDL_GetCurrentDirectory().
+ *
+ * SDL also offers functions to manipulate the directory tree: renaming,
+ * removing, copying files.
  */
 
 #ifndef SDL_filesystem_h_
@@ -73,7 +89,9 @@ extern "C" {
  *          doesn't implement this functionality, call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  *
  * \sa SDL_GetPrefPath
  */
@@ -118,6 +136,12 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetBasePath(void);
  * - ...only use letters, numbers, and spaces. Avoid punctuation like "Game
  *   Name 2: Bad Guy's Revenge!" ... "Game Name 2" is sufficient.
  *
+ * Due to historical mistakes, `org` is allowed to be NULL or "". In such
+ * cases, SDL will omit the org subdirectory, including on platforms where it
+ * shouldn't, and including on platforms where this would make your app fail
+ * certification for an app store. New apps should definitely specify a real
+ * string for `org`.
+ *
  * The returned path is guaranteed to end with a path separator ('\\' on
  * Windows, '/' on most other platforms).
  *
@@ -128,7 +152,9 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetBasePath(void);
  *          etc.). This should be freed with SDL_free() when it is no longer
  *          needed.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  *
  * \sa SDL_GetBasePath
  */
@@ -159,7 +185,7 @@ extern SDL_DECLSPEC char * SDLCALL SDL_GetPrefPath(const char *org, const char *
  *
  * Note that on macOS/iOS, the Videos folder is called "Movies".
  *
- * \since This enum is available since SDL 3.1.3.
+ * \since This enum is available since SDL 3.2.0.
  *
  * \sa SDL_GetUserFolder
  */
@@ -200,7 +226,9 @@ typedef enum SDL_Folder
  * \returns either a null-terminated C string containing the full path to the
  *          folder, or NULL if an error happened.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC const char * SDLCALL SDL_GetUserFolder(SDL_Folder folder);
 
@@ -214,7 +242,7 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetUserFolder(SDL_Folder folder);
  * symlinks, named pipes, etc. They are currently reported as
  * SDL_PATHTYPE_OTHER.
  *
- * \since This enum is available since SDL 3.1.3.
+ * \since This enum is available since SDL 3.2.0.
  *
  * \sa SDL_PathInfo
  */
@@ -229,7 +257,7 @@ typedef enum SDL_PathType
 /**
  * Information about a path on the filesystem.
  *
- * \since This datatype is available since SDL 3.1.3.
+ * \since This datatype is available since SDL 3.2.0.
  *
  * \sa SDL_GetPathInfo
  * \sa SDL_GetStoragePathInfo
@@ -246,7 +274,7 @@ typedef struct SDL_PathInfo
 /**
  * Flags for path matching.
  *
- * \since This datatype is available since SDL 3.1.3.
+ * \since This datatype is available since SDL 3.2.0.
  *
  * \sa SDL_GlobDirectory
  * \sa SDL_GlobStorageDirectory
@@ -267,14 +295,16 @@ typedef Uint32 SDL_GlobFlags;
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_CreateDirectory(const char *path);
 
 /**
  * Possible results from an enumeration callback.
  *
- * \since This enum is available since SDL 3.1.3.
+ * \since This enum is available since SDL 3.2.0.
  *
  * \sa SDL_EnumerateDirectoryCallback
  */
@@ -297,12 +327,15 @@ typedef enum SDL_EnumerationResult
  * terminate the enumeration early, and dictate the return value of the
  * enumeration function itself.
  *
+ * `dirname` is guaranteed to end with a path separator ('\\' on Windows, '/'
+ * on most other platforms).
+ *
  * \param userdata an app-controlled pointer that is passed to the callback.
  * \param dirname the directory that is being enumerated.
  * \param fname the next entry in the enumeration.
  * \returns how the enumeration should proceed.
  *
- * \since This datatype is available since SDL 3.1.3.
+ * \since This datatype is available since SDL 3.2.0.
  *
  * \sa SDL_EnumerateDirectory
  */
@@ -327,7 +360,9 @@ typedef SDL_EnumerationResult (SDLCALL *SDL_EnumerateDirectoryCallback)(void *us
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_EnumerateDirectory(const char *path, SDL_EnumerateDirectoryCallback callback, void *userdata);
 
@@ -341,14 +376,16 @@ extern SDL_DECLSPEC bool SDLCALL SDL_EnumerateDirectory(const char *path, SDL_En
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_RemovePath(const char *path);
 
 /**
  * Rename a file or directory.
  *
- * If the file at `newpath` already exists, it will replaced.
+ * If the file at `newpath` already exists, it will be replaced.
  *
  * Note that this will not copy files across filesystems/drives/volumes, as
  * that is a much more complicated (and possibly time-consuming) operation.
@@ -364,7 +401,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RemovePath(const char *path);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_RenamePath(const char *oldpath, const char *newpath);
 
@@ -404,7 +443,11 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenamePath(const char *oldpath, const char 
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread, but this
+ *               operation is not atomic, so the app might need to protect
+ *               access to specific paths from other threads if appropriate.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_CopyFile(const char *oldpath, const char *newpath);
 
@@ -417,7 +460,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_CopyFile(const char *oldpath, const char *n
  * \returns true on success or false if the file doesn't exist, or another
  *          failure; call SDL_GetError() for more information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo *info);
 
@@ -425,10 +470,10 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo 
  * Enumerate a directory tree, filtered by pattern, and return a list.
  *
  * Files are filtered out if they don't match the string in `pattern`, which
- * may contain wildcard characters '*' (match everything) and '?' (match one
+ * may contain wildcard characters `*` (match everything) and `?` (match one
  * character). If pattern is NULL, no filtering is done and all results are
  * returned. Subdirectories are permitted, and are specified with a path
- * separator of '/'. Wildcard characters '*' and '?' never match a path
+ * separator of `/`. Wildcard characters `*` and `?` never match a path
  * separator.
  *
  * `flags` may be set to SDL_GLOB_CASEINSENSITIVE to make the pattern matching
@@ -450,7 +495,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo 
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.1.3.
+ * \since This function is available since SDL 3.2.0.
  */
 extern SDL_DECLSPEC char ** SDLCALL SDL_GlobDirectory(const char *path, const char *pattern, SDL_GlobFlags flags, int *count);
 
@@ -464,9 +509,14 @@ extern SDL_DECLSPEC char ** SDLCALL SDL_GlobDirectory(const char *path, const ch
  * platforms without this concept, this would cause surprises with file access
  * outside of SDL.
  *
+ * The returned path is guaranteed to end with a path separator ('\\' on
+ * Windows, '/' on most other platforms).
+ *
  * \returns a UTF-8 string of the current working directory in
  *          platform-dependent notation. NULL if there's a problem. This
  *          should be freed with SDL_free() when it is no longer needed.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.2.0.
  */

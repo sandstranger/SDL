@@ -335,7 +335,7 @@ typedef enum
 			continue;
 
 		NSLog( @"connected peripheral: %@", peripheral );
-		if ( [peripheral.name isEqualToString:@"SteamController"] )
+		if ( [peripheral.name hasPrefix:@"Steam"] )
 		{
 			self.nPendingPairs += 1;
 			HIDBLEDevice *steamController = [[HIDBLEDevice alloc] initWithPeripheral:peripheral];
@@ -398,12 +398,12 @@ typedef enum
 {
 	switch ( central.state )
 	{
-		case CBCentralManagerStatePoweredOn:
+		case CBManagerStatePoweredOn:
 		{
 			NSLog( @"CoreBluetooth BLE hardware is powered on and ready" );
 
 			// at startup, if we have no already attached peripherals, do a 20s scan for new unpaired devices,
-			// otherwise callers should occaisionally do additional scans. we don't want to continuously be
+			// otherwise callers should occasionally do additional scans. we don't want to continuously be
 			// scanning because it drains battery, causes other nearby people to have a hard time pairing their
 			// Steam Controllers, and may also trigger firmware weirdness when a device attempts to start
 			// the pairing sequence multiple times concurrently
@@ -418,23 +418,23 @@ typedef enum
 			break;
 		}
 
-		case CBCentralManagerStatePoweredOff:
+		case CBManagerStatePoweredOff:
 			NSLog( @"CoreBluetooth BLE hardware is powered off" );
 			break;
 
-		case CBCentralManagerStateUnauthorized:
+		case CBManagerStateUnauthorized:
 			NSLog( @"CoreBluetooth BLE state is unauthorized" );
 			break;
 
-		case CBCentralManagerStateUnknown:
+		case CBManagerStateUnknown:
 			NSLog( @"CoreBluetooth BLE state is unknown" );
 			break;
 
-		case CBCentralManagerStateUnsupported:
+		case CBManagerStateUnsupported:
 			NSLog( @"CoreBluetooth BLE hardware is unsupported on this platform" );
 			break;
 
-		case CBCentralManagerStateResetting:
+		case CBManagerStateResetting:
 			NSLog( @"CoreBluetooth BLE manager is resetting" );
 			break;
 	}
@@ -459,7 +459,7 @@ typedef enum
 	NSString *localName = [advertisementData objectForKey:CBAdvertisementDataLocalNameKey];
 	NSString *log = [NSString stringWithFormat:@"Found '%@'", localName];
 
-	if ( [localName isEqualToString:@"SteamController"] )
+	if ( [localName hasPrefix:@"Steam"] )
 	{
 		NSLog( @"%@ : %@ - %@", log, peripheral, advertisementData );
 		self.nPendingPairs += 1;
@@ -750,7 +750,7 @@ static void process_pending_events(void)
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
-	NSLog( @"didUpdateNotifcationStateForCharacteristic %@ (%@)", characteristic, error );
+	NSLog( @"didUpdateNotificationStateForCharacteristic %@ (%@)", characteristic, error );
 }
 
 @end
