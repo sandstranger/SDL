@@ -1,4 +1,4 @@
-package org.libsdl.app;
+package org.libsdl3.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -1965,7 +1965,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setData(Uri.parse(url));
 
-            int flags = Intent.FLAG_ACTIVITY_NO_HISTORY 
+            int flags = Intent.FLAG_ACTIVITY_NO_HISTORY
                       | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
                       | Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
             i.addFlags(flags);

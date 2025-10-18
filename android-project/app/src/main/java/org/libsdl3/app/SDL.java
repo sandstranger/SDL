@@ -1,4 +1,4 @@
-package org.libsdl.app;
+package org.libsdl3.app;
 
 import android.app.Activity;
 import android.content.Context;

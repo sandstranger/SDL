@@ -1,4 +1,4 @@
-package org.libsdl.app;
+package org.libsdl3.app;
 
 import java.util.ArrayList;
 import java.util.Collections;

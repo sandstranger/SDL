@@ -1,16 +1,30 @@
 plugins {
-     id 'com.android.application'
+    alias(libs.plugins.jetbrains.kotlin.android)
 }
 
-def buildWithCMake = project.hasProperty('BUILD_WITH_CMAKE');
+apply plugin: 'com.android.library'
 
 android {
-    namespace = "org.libsdl.app"
-    compileSdkVersion 35
-    ndkVersion = "28.2.13676358"
+    namespace = "org.libsdl3.app"
+    compileSdkVersion versions.target_sdk
+
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 35
+        minSdkVersion versions.min_sdk
+        targetSdkVersion versions.target_sdk
+
+        ndk {
+            abiFilters = abi_filters
+        }
+        externalNativeBuild {
+            ndkBuild {
+                arguments += build_flags.ndk_build_platform
+                arguments += build_flags.compiling_arguments
+                arguments += build_flags.none_build_id_flag
+                cFlags  = build_flags.common_c_flags
+                cppFlags = build_flags.common_cpp_flags
+            }
+        }
+
         versionCode 1
         versionName "1.0"
         externalNativeBuild {
@@ -32,26 +46,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    applicationVariants.all { variant ->
-        tasks["merge${variant.name.capitalize()}Assets"]
-            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    externalNativeBuild {
+        ndkBuild {
+            path "$rootDir/sdl3/Android.mk"
+        }
     }
-    if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
-        sourceSets.main {
-            jniLibs.srcDir 'libs'
-        }
-        externalNativeBuild {
-            if (buildWithCMake) {
-                cmake {
-                    path 'jni/CMakeLists.txt'
-                }
-            } else {
-                ndkBuild {
-                    path 'jni/Android.mk'
-                }
-            }
-        }
-
+    buildToolsVersion versions.build_tools_version
+    ndkVersion versions.ndk_version
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     lint {
         abortOnError = false
@@ -60,4 +67,7 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation libs.kotlin.stdlib
+    implementation libs.kotlinx.coroutines.core
+    implementation libs.androidx.appcompat
 }
