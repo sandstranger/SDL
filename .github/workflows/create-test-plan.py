@@ -20,7 +20,6 @@ class AppleArch(Enum):
 class MsvcArch(Enum):
     X86 = "x86"
     X64 = "x64"
-    Arm32 = "arm"
     Arm64 = "arm64"
 
 
@@ -50,6 +49,7 @@ class SdlPlatform(Enum):
     Riscos = "riscos"
     FreeBSD = "freebsd"
     NetBSD = "netbsd"
+    OpenBSD = "openbsd"
     Watcom = "watcom"
 
 
@@ -96,7 +96,6 @@ class JobSpec:
     msvc_static_crt: bool = False
     clang_cl: bool = False
     gdk: bool = False
-    uwp: bool = False
     vita_gles: Optional[VitaGLES] = None
     watcom_platform: Optional[WatcomPlatform] = None
 
@@ -112,9 +111,7 @@ JOB_SPECS = {
     "msvc-static-x64": JobSpec(name="Windows (MSVC, static VCRT, x64)",     os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-VC-x64",             msvc_arch=MsvcArch.X64,   msvc_static_crt=True, ),
     "msvc-clang-x64": JobSpec(name="Windows (MSVC, clang-cl x64)",          os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-clang-cl-x64",       msvc_arch=MsvcArch.X64,   clang_cl=True, ),
     "msvc-clang-x86": JobSpec(name="Windows (MSVC, clang-cl x86)",          os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-clang-cl-x86",       msvc_arch=MsvcArch.X86,   clang_cl=True, ),
-    "msvc-arm32": JobSpec(name="Windows (MSVC, ARM)",                       os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-VC-arm32",           msvc_arch=MsvcArch.Arm32, ),
     "msvc-arm64": JobSpec(name="Windows (MSVC, ARM64)",                     os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-VC-arm64",           msvc_arch=MsvcArch.Arm64, ),
-    "msvc-uwp-x64": JobSpec(name="UWP (MSVC, x64)",                         os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-VC-UWP",             msvc_arch=MsvcArch.X64,   msvc_project="VisualC-WinRT/SDL-UWP.sln", uwp=True, ),
     "msvc-gdk-x64": JobSpec(name="GDK (MSVC, x64)",                         os=JobOs.WindowsLatest, platform=SdlPlatform.Msvc,        artifact="SDL-VC-GDK",             msvc_arch=MsvcArch.X64,   msvc_project="VisualC-GDK/SDL.sln", gdk=True, no_cmake=True, ),
     "ubuntu-22.04": JobSpec(name="Ubuntu 22.04",                            os=JobOs.Ubuntu22_04,   platform=SdlPlatform.Linux,       artifact="SDL-ubuntu22.04",        autotools=True),
     "steamrt-sniper": JobSpec(name="Steam Linux Runtime (Sniper)",          os=JobOs.UbuntuLatest,  platform=SdlPlatform.Linux,       artifact="SDL-slrsniper",          container="registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta", ),
@@ -133,6 +130,7 @@ JOB_SPECS = {
     "vita-pvr": JobSpec(name="Sony PlayStation Vita (GLES w/ PVR_PSP2)",    os=JobOs.UbuntuLatest,  platform=SdlPlatform.Vita,        artifact="SDL-vita-pvr",           container="vitasdk/vitasdk:latest", vita_gles=VitaGLES.Pvr, ),
     "riscos": JobSpec(name="RISC OS",                                       os=JobOs.UbuntuLatest,  platform=SdlPlatform.Riscos,      artifact="SDL-riscos",             container="riscosdotinfo/riscos-gccsdk-4.7:latest", ),
     "netbsd": JobSpec(name="NetBSD",                                        os=JobOs.UbuntuLatest,  platform=SdlPlatform.NetBSD,      artifact="SDL-netbsd-x64",  autotools=True, ),
+    "openbsd": JobSpec(name="OpenBSD",                                      os=JobOs.UbuntuLatest,  platform=SdlPlatform.OpenBSD,     artifact="SDL-openbsd-x64",  autotools=True, ),
     "freebsd": JobSpec(name="FreeBSD",                                      os=JobOs.UbuntuLatest,  platform=SdlPlatform.FreeBSD,     artifact="SDL-freebsd-x64", autotools=True, ),
     "watcom-win32": JobSpec(name="Watcom (Windows)",                        os=JobOs.WindowsLatest, platform=SdlPlatform.Watcom,      artifact="SDL-watcom-win32",  no_cmake=True, watcom_platform=WatcomPlatform.Windows ),
     "watcom-os2": JobSpec(name="Watcom (OS/2)",                             os=JobOs.WindowsLatest, platform=SdlPlatform.Watcom,      artifact="SDL-watcom-win32",  no_cmake=True, watcom_platform=WatcomPlatform.OS2 ),
@@ -365,10 +363,7 @@ def spec_to_job(spec: JobSpec, key: str, trackmem_symbol_names: bool) -> JobDeta
                 "-DCMAKE_EXE_LINKER_FLAGS=-DEBUG",
                 "-DCMAKE_SHARED_LINKER_FLAGS=-DEBUG",
             ))
-            if spec.uwp:
-                job.cmake_arguments.append("'-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL'")
-            else:
-                job.cmake_arguments.append("'-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>'")
+            job.cmake_arguments.append("'-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>'")
 
             if spec.clang_cl:
                 job.cmake_arguments.extend((
@@ -400,21 +395,10 @@ def spec_to_job(spec: JobSpec, key: str, trackmem_symbol_names: bool) -> JobDeta
                     job.msvc_vcvars_arch = "x64_x86"
                 case MsvcArch.X64:
                     job.msvc_vcvars_arch = "x64"
-                case MsvcArch.Arm32:
-                    job.msvc_vcvars_arch = "x64_arm"
-                    job.msvc_vcvars_sdk = "10.0.22621.0"  # 10.0.26100.0 dropped ARM32 um and ucrt libraries
-                    job.run_tests = False
                 case MsvcArch.Arm64:
                     job.msvc_vcvars_arch = "x64_arm64"
                     job.run_tests = False
-            if spec.uwp:
-                job.build_tests = False
-                job.cmake_arguments.extend((
-                    "-DCMAKE_SYSTEM_NAME=WindowsStore",
-                    "-DCMAKE_SYSTEM_VERSION=10.0",
-                ))
-                job.msvc_project_flags.append("-p:WindowsTargetPlatformVersion=10.0.17763.0")
-            elif spec.gdk:
+            if spec.gdk:
                 job.setup_gdk_folder = "VisualC-GDK"
             else:
                 match spec.msvc_arch:
@@ -643,7 +627,7 @@ def spec_to_job(spec: JobSpec, key: str, trackmem_symbol_names: bool) -> JobDeta
             ))
             job.cmake_toolchain_file = "/home/riscos/env/toolchain-riscos.cmake"
             job.static_lib = StaticLibType.A
-        case SdlPlatform.FreeBSD | SdlPlatform.NetBSD:
+        case SdlPlatform.FreeBSD | SdlPlatform.NetBSD | SdlPlatform.OpenBSD:
             job.build_autotools_tests = False
             job.cpactions = True
             job.no_cmake = True
@@ -654,7 +638,7 @@ def spec_to_job(spec: JobSpec, key: str, trackmem_symbol_names: bool) -> JobDeta
             match spec.platform:
                 case SdlPlatform.FreeBSD:
                     job.cpactions_os = "freebsd"
-                    job.cpactions_version = "14.2"
+                    job.cpactions_version = "14.3"
                     job.cpactions_arch = "x86-64"
                     job.cpactions_setup_cmd = "sudo pkg update"
                     job.cpactions_install_cmd = "sudo pkg install -y cmake ninja pkgconf libXcursor libXext libXinerama libXi libXfixes libXrandr libXScrnSaver libXxf86vm wayland wayland-protocols libxkbcommon mesa-libs libglvnd evdev-proto libinotify alsa-lib jackit pipewire pulseaudio sndio dbus zh-fcitx ibus libudev-devd"
@@ -668,6 +652,12 @@ def spec_to_job(spec: JobSpec, key: str, trackmem_symbol_names: bool) -> JobDeta
                     job.cpactions_arch = "x86-64"
                     job.cpactions_setup_cmd = "export PATH=\"/usr/pkg/sbin:/usr/pkg/bin:/sbin:$PATH\"; export PKG_CONFIG_PATH=\"/usr/pkg/lib/pkgconfig\";export PKG_PATH=\"https://cdn.netBSD.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r|cut -f \"1 2\" -d.)/All/\";echo \"PKG_PATH=$PKG_PATH\";echo \"uname -a -> \"$(uname -a)\"\";sudo -E sysctl -w security.pax.aslr.enabled=0;sudo -E sysctl -w security.pax.aslr.global=0;sudo -E pkgin clean;sudo -E pkgin update"
                     job.cpactions_install_cmd = "sudo -E pkgin -y install cmake dbus pkgconf ninja-build pulseaudio libxkbcommon wayland wayland-protocols libinotify libusb1"
+                case SdlPlatform.OpenBSD:
+                    job.cpactions_os = "openbsd"
+                    job.cpactions_version = "7.7"
+                    job.cpactions_arch = "x86-64"
+                    job.cpactions_setup_cmd = "sudo pkg_add -u"
+                    job.cpactions_install_cmd = "sudo pkg_add cmake ninja pkgconf wayland wayland-protocols libxkbcommon libinotify pulseaudio dbus ibus"
         case SdlPlatform.Watcom:
             match spec.watcom_platform:
                 case WatcomPlatform.OS2:
