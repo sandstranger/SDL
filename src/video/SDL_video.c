@@ -49,6 +49,8 @@
 // GL and GLES2 headers conflict on Linux 32 bits
 #if defined(SDL_VIDEO_OPENGL_ES2) && !defined(SDL_VIDEO_OPENGL)
 #include <SDL3/SDL_opengles2.h>
+#include <dlfcn.h>
+
 #endif // SDL_VIDEO_OPENGL_ES2 && !SDL_VIDEO_OPENGL
 
 // GL_CONTEXT_RELEASE_BEHAVIOR and GL_CONTEXT_RELEASE_BEHAVIOR_KHR have the same number.
@@ -4680,9 +4682,20 @@ bool SDL_GL_LoadLibrary(const char *path)
     }
     return result;
 }
+#if ANDROID
+static void *openGLHandle = NULL;
+#endif
 
 SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
 {
+#if ANDROID
+
+    if (openGLHandle == NULL) {
+        openGLHandle = dlopen(getenv("SDL_VIDEO_GL_DRIVER"),RTLD_LAZY | RTLD_LOCAL);
+    }
+
+    return dlsym(openGLHandle, proc);
+#else
     SDL_FunctionPointer func;
 
     if (!_this) {
@@ -4700,6 +4713,7 @@ SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
         SDL_SetError("No dynamic GL support in current SDL video driver (%s)", _this->name);
     }
     return func;
+#endif
 }
 
 SDL_FunctionPointer SDL_EGL_GetProcAddress(const char *proc)
