@@ -4691,10 +4691,10 @@ SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
 #if ANDROID
 
     if (openGLHandle == NULL) {
-        openGLHandle = dlopen(getenv("SDL_VIDEO_GL_DRIVER"),RTLD_LAZY | RTLD_LOCAL);
+        openGLHandle = SDL_LoadObject(SDL_getenv("SDL_VIDEO_GL_DRIVER"));
     }
 
-    return dlsym(openGLHandle, proc);
+    return SDL_LoadFunction(openGLHandle, proc);
 #else
     SDL_FunctionPointer func;
 
