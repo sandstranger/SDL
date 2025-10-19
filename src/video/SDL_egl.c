@@ -418,7 +418,7 @@ static bool SDL_EGL_LoadLibraryInternal(SDL_VideoDevice *_this, const char *egl_
         }
 #endif
     }
-    _this->egl_data->opengl_dll_handle = SDL_getenv("SDL_VIDEO_GL_DRIVER");
+    _this->egl_data->opengl_dll_handle = opengl_dll_handle;
 
     if (!opengl_dll_handle) {
         return SDL_SetError("Could not initialize OpenGL / GLES library");
