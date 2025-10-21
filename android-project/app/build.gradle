@@ -35,7 +35,7 @@ android {
     }
     externalNativeBuild {
         ndkBuild {
-            path "$rootDir/sdl2/Android.mk"
+            path "$rootDir/third_party/sdl2/Android.mk"
         }
     }
     lintOptions {
