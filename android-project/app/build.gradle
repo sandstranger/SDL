@@ -34,7 +34,7 @@ android {
     }
     externalNativeBuild {
         cmake {
-            path "$rootDir/sdl3/CMakeLists.txt"
+            path "$rootDir/third_party/sdl3/CMakeLists.txt"
             version versions.cmake_version
         }
     }
