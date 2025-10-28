@@ -189,6 +189,7 @@ static const struct SDL_GamepadBlacklistWords SDL_gamepad_blacklist_words[] = {
 #ifdef SDL_PLATFORM_LINUX
     {" Motion Sensors", GAMEPAD_BLACKLIST_END}, // Don't treat the PS3 and PS4 motion controls as a separate gamepad
     {" IMU",            GAMEPAD_BLACKLIST_END}, // Don't treat the Nintendo IMU as a separate gamepad
+    {" Touchpad",       GAMEPAD_BLACKLIST_END}, // "Sony Interactive Entertainment DualSense Wireless Controller Touchpad"
 
     // Don't treat the Wii extension controls as a separate gamepad
     {" Accelerometer",  GAMEPAD_BLACKLIST_END},
@@ -200,9 +201,7 @@ static const struct SDL_GamepadBlacklistWords SDL_gamepad_blacklist_words[] = {
     // The Google Pixel fingerprint sensor, as well as other fingerprint sensors, reports itself as a joystick
     {"uinput-",         GAMEPAD_BLACKLIST_BEGIN},
 
-    {" TouchPad",       GAMEPAD_BLACKLIST_END}, // "SynPS/2 Synaptics TouchPad"
-    {" Touchpad",       GAMEPAD_BLACKLIST_END}, // "Sony Interactive Entertainment DualSense Wireless Controller Touchpad"
-    {"Synaptics ",      GAMEPAD_BLACKLIST_BEGIN}, // "Synaptics TM2768-001"
+    {"Synaptics ",      GAMEPAD_BLACKLIST_ANYWHERE}, // "Synaptics TM2768-001", "SynPS/2 Synaptics TouchPad"
     {"Trackpad",        GAMEPAD_BLACKLIST_ANYWHERE},
     {"Clickpad",        GAMEPAD_BLACKLIST_ANYWHERE},
     // "PG-90215 Keyboard", "Usb Keyboard Usb Keyboard Consumer Control", "Framework Laptop 16 Keyboard Module - ISO System Control"
@@ -2249,17 +2248,6 @@ static GamepadMapping_t *SDL_PrivateGetGamepadMappingForNameAndGUID(const char *
     SDL_AssertJoysticksLocked();
 
     mapping = SDL_PrivateGetGamepadMappingForGUID(guid, false);
-#ifdef SDL_PLATFORM_LINUX
-    if (!mapping && name) {
-        if (SDL_strstr(name, "Xbox 360 Wireless Receiver")) {
-            // The Linux driver xpad.c maps the wireless dpad to buttons
-            bool existing;
-            mapping = SDL_PrivateAddMappingForGUID(guid,
-                                                   "none,X360 Wireless Controller,a:b0,b:b1,back:b6,dpdown:b14,dpleft:b11,dpright:b12,dpup:b13,guide:b8,leftshoulder:b4,leftstick:b9,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b10,righttrigger:a5,rightx:a3,righty:a4,start:b7,x:b2,y:b3,",
-                                                   &existing, SDL_GAMEPAD_MAPPING_PRIORITY_DEFAULT);
-        }
-    }
-#endif // SDL_PLATFORM_LINUX
 
     return mapping;
 }

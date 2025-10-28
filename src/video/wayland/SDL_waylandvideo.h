@@ -118,7 +118,6 @@ struct SDL_DisplayData
     SDL_DisplayOrientation orientation;
     int physical_width_mm, physical_height_mm;
     bool has_logical_position, has_logical_size;
-    bool running_colorspace_event_queue;
     SDL_HDROutputProperties HDR;
     SDL_DisplayID display;
     SDL_VideoDisplay placeholder;
@@ -137,6 +136,7 @@ extern bool SDL_WAYLAND_own_output(struct wl_output *output);
 extern SDL_WindowData *Wayland_GetWindowDataForOwnedSurface(struct wl_surface *surface);
 void Wayland_AddWindowDataToExternalList(SDL_WindowData *data);
 void Wayland_RemoveWindowDataFromExternalList(SDL_WindowData *data);
+struct wl_event_queue *Wayland_DisplayCreateQueue(struct wl_display *display, const char *name);
 
 extern bool Wayland_LoadLibdecor(SDL_VideoData *data, bool ignore_xdg);
 

@@ -495,127 +495,108 @@ void Wayland_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window)
     WAYLAND_wl_display_flush(d->display);
 }
 
-static int dispatch_queued_events(SDL_VideoData *viddata)
-{
-    int rc;
-
-    /*
-     * NOTE: When reconnection is implemented, check if libdecor needs to be
-     *       involved in the reconnection process.
-     */
-#ifdef HAVE_LIBDECOR_H
-    if (viddata->shell.libdecor) {
-        libdecor_dispatch(viddata->shell.libdecor, 0);
-    }
-#endif
-
-    rc = WAYLAND_wl_display_dispatch_pending(viddata->display);
-    return rc >= 0 ? 1 : rc;
-}
-
 int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
     SDL_VideoData *d = _this->internal;
     SDL_WaylandSeat *seat;
-    bool key_repeat_active = false;
-
-    WAYLAND_wl_display_flush(d->display);
+    Uint64 start = SDL_GetTicksNS();
+    const int display_fd = WAYLAND_wl_display_get_fd(d->display);
+    int ret;
+    bool poll_alarm_set = false;
 
 #ifdef SDL_USE_IME
     SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
     if (!d->text_input_manager && keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
-        SDL_IME_PumpEvents();
+        // If a DBus IME is active with no text input protocol, periodically wake to poll it.
+        if (timeoutNS < 0 || SDL_MS_TO_NS(200) <= timeoutNS) {
+            timeoutNS = SDL_MS_TO_NS(200);
+            poll_alarm_set = true;
+        }
     }
-#endif
-
-#ifdef SDL_USE_LIBDBUS
-    SDL_DBus_PumpEvents();
 #endif
 
     // If key repeat is active, we'll need to cap our maximum wait time to handle repeats
     wl_list_for_each (seat, &d->seat_list, link) {
         if (keyboard_repeat_is_set(&seat->keyboard.repeat)) {
-            Wayland_SeatSetKeymap(seat);
-
-            const Uint64 elapsed = SDL_GetTicksNS() - seat->keyboard.repeat.sdl_press_time_ns;
-            if (keyboard_repeat_handle(&seat->keyboard.repeat, elapsed)) {
-                // A repeat key event was already due
-                return 1;
-            } else {
-                const Uint64 next_repeat_wait_time = (seat->keyboard.repeat.next_repeat_ns - elapsed) + 1;
-                if (timeoutNS >= 0) {
-                    timeoutNS = SDL_min(timeoutNS, next_repeat_wait_time);
-                } else {
-                    timeoutNS = next_repeat_wait_time;
-                }
-                key_repeat_active = true;
+            const Uint64 elapsed = start - seat->keyboard.repeat.sdl_press_time_ns;
+            const Uint64 next_repeat_wait_time = (seat->keyboard.repeat.next_repeat_ns - elapsed) + 1;
+            if (timeoutNS < 0 || next_repeat_wait_time <= timeoutNS) {
+                timeoutNS = next_repeat_wait_time;
+                poll_alarm_set = true;
             }
         }
     }
 
-    /* wl_display_prepare_read() will return -1 if the default queue is not empty.
-     * If the default queue is empty, it will prepare us for our SDL_IOReady() call. */
     if (WAYLAND_wl_display_prepare_read(d->display) == 0) {
-        // Use SDL_IOR_NO_RETRY to ensure SIGINT will break us out of our wait
-        int err = SDL_IOReady(WAYLAND_wl_display_get_fd(d->display), SDL_IOR_READ | SDL_IOR_NO_RETRY, timeoutNS);
-        if (err > 0) {
-            // There are new events available to read
-            WAYLAND_wl_display_read_events(d->display);
-            return dispatch_queued_events(d);
-        } else if (err == 0) {
-            int ret = 0;
+        if (timeoutNS > 0) {
+            const Uint64 now = SDL_GetTicksNS();
+            const Uint64 elapsed = now - start;
+            start = now;
+            timeoutNS = elapsed <= timeoutNS ? timeoutNS - elapsed : 0;
+        }
 
-            // No events available within the timeout
-            WAYLAND_wl_display_cancel_read(d->display);
+        ret = WAYLAND_wl_display_flush(d->display);
 
-            // If key repeat is active, we might have woken up to generate a key event
-            if (key_repeat_active) {
-                wl_list_for_each (seat, &d->seat_list, link) {
-                    if (keyboard_repeat_is_set(&seat->keyboard.repeat)) {
-                        Wayland_SeatSetKeymap(seat);
+        if (ret == -1 && errno == EAGAIN) {
+            // Unable to write to the socket; poll until the socket can be written to, it times out, or is interrupted.
+            ret = SDL_IOReady(display_fd, SDL_IOR_WRITE | SDL_IOR_NO_RETRY, timeoutNS);
 
-                        const Uint64 elapsed = SDL_GetTicksNS() - seat->keyboard.repeat.sdl_press_time_ns;
-                        if (keyboard_repeat_handle(&seat->keyboard.repeat, elapsed)) {
-                            ++ret;
-                        }
-                    }
-                }
-            }
-
-            return ret;
-        } else {
-            // Error returned from poll()/select()
-            WAYLAND_wl_display_cancel_read(d->display);
-
-            if (errno == EINTR) {
-                /* If the wait was interrupted by a signal, we may have generated a
-                 * SDL_EVENT_QUIT event. Let the caller know to call SDL_PumpEvents(). */
-                return 1;
-            } else {
-                return err;
+            if (ret <= 0) {
+                // The poll operation timed out or experienced an error, so see if there are any events to read without waiting.
+                timeoutNS = 0;
             }
         }
-    } else {
-        // We already had pending events
-        return dispatch_queued_events(d);
+
+        if (ret < 0) {
+            // Pump events on an interrupt or broken pipe to handle the error.
+            WAYLAND_wl_display_cancel_read(d->display);
+            return errno == EINTR || errno == EPIPE ? 1 : ret;
+        }
+
+        if (timeoutNS > 0) {
+            const Uint64 now = SDL_GetTicksNS();
+            const Uint64 elapsed = now - start;
+            start = now;
+            timeoutNS = elapsed <= timeoutNS ? timeoutNS - elapsed : 0;
+        }
+
+        // Use SDL_IOR_NO_RETRY to catch EINTR.
+        ret = SDL_IOReady(display_fd, SDL_IOR_READ | SDL_IOR_NO_RETRY, timeoutNS);
+        if (ret <= 0) {
+            // Timeout or error, cancel the read.
+            WAYLAND_wl_display_cancel_read(d->display);
+
+            // The poll timed out with no data to read, but signal the caller to pump events if polling is required.
+            if (ret == 0) {
+                return poll_alarm_set ? 1 : 0;
+            } else {
+                // Pump events on an interrupt or broken pipe to handle the error.
+                return errno == EINTR || errno == EPIPE ? 1 : ret;
+            }
+        }
+
+        ret = WAYLAND_wl_display_read_events(d->display);
+        if (ret == -1) {
+            return ret;
+        }
     }
+
+    // Signal to the caller that there might be an event available.
+    return 1;
 }
 
 void Wayland_PumpEvents(SDL_VideoDevice *_this)
 {
     SDL_VideoData *d = _this->internal;
     SDL_WaylandSeat *seat;
-    int err;
+    const int display_fd = WAYLAND_wl_display_get_fd(d->display);
+    int ret = 0;
 
 #ifdef SDL_USE_IME
     SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
     if (!d->text_input_manager && keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
         SDL_IME_PumpEvents();
     }
-#endif
-
-#ifdef SDL_USE_LIBDBUS
-    SDL_DBus_PumpEvents();
 #endif
 
 #ifdef HAVE_LIBDECOR_H
@@ -624,31 +605,66 @@ void Wayland_PumpEvents(SDL_VideoDevice *_this)
     }
 #endif
 
-    WAYLAND_wl_display_flush(d->display);
+    /* If the queue isn't empty, dispatch any old events, and try to prepare for reading again.
+     * If preparing to read returns -1 on the second try, wl_display_read_events() enqueued new
+     * events at some point between dispatching the old events and preparing for the read,
+     * probably from another thread, which means that the events in the queue are current.
+     */
+    ret = WAYLAND_wl_display_prepare_read(d->display);
+    if (ret == -1) {
+        ret = WAYLAND_wl_display_dispatch_pending(d->display);
+        if (ret < 0) {
+            goto connection_error;
+        }
 
-    /* wl_display_prepare_read() will return -1 if the default queue is not empty.
-     * If the default queue is empty, it will prepare us for our SDL_IOReady() call. */
-    if (WAYLAND_wl_display_prepare_read(d->display) == 0) {
-        if (SDL_IOReady(WAYLAND_wl_display_get_fd(d->display), SDL_IOR_READ, 0) > 0) {
-            WAYLAND_wl_display_read_events(d->display);
+        ret = WAYLAND_wl_display_prepare_read(d->display);
+    }
+
+    if (ret == 0) {
+        ret = WAYLAND_wl_display_flush(d->display);
+
+        if (ret == -1 && errno == EAGAIN) {
+            // Unable to write to the socket; wait a brief time to see if it becomes writable.
+            ret = SDL_IOReady(display_fd, SDL_IOR_WRITE, SDL_MS_TO_NS(4));
+            if (ret > 0) {
+                ret = WAYLAND_wl_display_flush(d->display);
+            }
+        }
+
+        // If the compositor closed the socket, just jump to the error handler.
+        if (ret < 0 && errno == EPIPE) {
+            WAYLAND_wl_display_cancel_read(d->display);
+            goto connection_error;
+        }
+
+        ret = SDL_IOReady(display_fd, SDL_IOR_READ, 0);
+        if (ret > 0) {
+            ret = WAYLAND_wl_display_read_events(d->display);
+            if (ret == 0) {
+                ret = WAYLAND_wl_display_dispatch_pending(d->display);
+            }
         } else {
             WAYLAND_wl_display_cancel_read(d->display);
         }
+
+    } else {
+        ret = WAYLAND_wl_display_dispatch_pending(d->display);
     }
 
-    // Dispatch any pre-existing pending events or new events we may have read
-    err = WAYLAND_wl_display_dispatch_pending(d->display);
+    if (ret >= 0) {
+        // Synthesize key repeat events.
+        wl_list_for_each (seat, &d->seat_list, link) {
+            if (keyboard_repeat_is_set(&seat->keyboard.repeat)) {
+                Wayland_SeatSetKeymap(seat);
 
-    wl_list_for_each (seat, &d->seat_list, link) {
-        if (keyboard_repeat_is_set(&seat->keyboard.repeat)) {
-            Wayland_SeatSetKeymap(seat);
-
-            const Uint64 elapsed = SDL_GetTicksNS() - seat->keyboard.repeat.sdl_press_time_ns;
-            keyboard_repeat_handle(&seat->keyboard.repeat, elapsed);
+                const Uint64 elapsed = SDL_GetTicksNS() - seat->keyboard.repeat.sdl_press_time_ns;
+                keyboard_repeat_handle(&seat->keyboard.repeat, elapsed);
+            }
         }
     }
 
-    if (err < 0 && !d->display_disconnected) {
+connection_error:
+    if (ret < 0 && !d->display_disconnected) {
         /* Something has failed with the Wayland connection -- for example,
          * the compositor may have shut down and closed its end of the socket,
          * or there is a library-specific error.
@@ -659,9 +675,7 @@ void Wayland_PumpEvents(SDL_VideoDevice *_this)
             d->display_disconnected = 1;
             SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Wayland display connection closed by server (fatal)");
 
-            /* Only send a single quit message, as application shutdown might call
-             * SDL_PumpEvents
-             */
+            // Only send a single quit message, as application shutdown might call SDL_PumpEvents().
             SDL_SendQuit();
         }
     }
@@ -2340,6 +2354,8 @@ static const struct wl_keyboard_listener keyboard_listener = {
 
 static void Wayland_SeatDestroyPointer(SDL_WaylandSeat *seat, bool send_event)
 {
+    Wayland_SeatDestroyCursorFrameCallback(seat);
+
     // End any active gestures.
     if (seat->pointer.gesture_focus) {
         SDL_SendPinch(SDL_EVENT_PINCH_END, 0, seat->pointer.gesture_focus->sdlwindow, 0.0f);
@@ -2370,10 +2386,6 @@ static void Wayland_SeatDestroyPointer(SDL_WaylandSeat *seat, bool send_event)
 
     if (seat->pointer.gesture_pinch) {
         zwp_pointer_gesture_pinch_v1_destroy(seat->pointer.gesture_pinch);
-    }
-
-    if (seat->pointer.cursor_state.frame_callback) {
-        wl_callback_destroy(seat->pointer.cursor_state.frame_callback);
     }
 
     if (seat->pointer.cursor_state.surface) {
@@ -3638,8 +3650,6 @@ void Wayland_DisplayCreateSeat(SDL_VideoData *display, struct wl_seat *wl_seat, 
     if (display->tablet_manager) {
         Wayland_SeatInitTabletSupport(seat);
     }
-
-    WAYLAND_wl_display_flush(display->display);
 }
 
 void Wayland_DisplayRemoveWindowReferencesFromSeats(SDL_VideoData *display, SDL_WindowData *window)

@@ -63,7 +63,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
     private static final int SDL_MINOR_VERSION = 3;
-    private static final int SDL_MICRO_VERSION = 0;
+    private static final int SDL_MICRO_VERSION = 3;
 /*
     // Display InputType.SOURCE/CLASS of events and devices
     //
