@@ -22,7 +22,8 @@ android {
                 arguments "-DANDROID_PLATFORM=android-$versions.native_android_platform_version",
                     "-DCMAKE_CXX_FLAGS=$build_flags.CMAKE_CXXFLAGS",
                     "-DCMAKE_C_FLAGS=$build_flags.CMAKE_CFLAGS",
-                    "-DCMAKE_SHARED_LINKER_FLAGS=$build_flags.CMAKE_SHADERLINKER_FLAGS"
+                    "-DCMAKE_SHARED_LINKER_FLAGS=$build_flags.CMAKE_SHADERLINKER_FLAGS",
+                    "$build_flags.CMAKE_ANDROID_STL"
             }
         }
     }
@@ -36,6 +37,14 @@ android {
         cmake {
             path "$rootDir/third_party/sdl3/CMakeLists.txt"
             version versions.cmake_version
+        }
+    }
+    buildFeatures {
+        prefabPublishing true
+    }
+    prefab{
+        SDL3 {
+            headers "$rootDir/third_party/sdl3/include"
         }
     }
     buildToolsVersion versions.build_tools_version
