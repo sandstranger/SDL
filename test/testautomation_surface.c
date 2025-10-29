@@ -864,12 +864,24 @@ static int SDLCALL surface_testSurfaceNULLPixels(void *arg)
 static int SDLCALL surface_testSurfaceRLEPixels(void *arg)
 {
     SDL_Surface *face, *a, *b, *tmp;
+    int ret;
     bool result;
 
     face = SDLTest_ImageFace();
     SDLTest_AssertCheck(face != NULL, "Verify face surface is not NULL");
     if (face == NULL) {
         return TEST_ABORTED;
+    }
+
+    /* RLE encoding only works for 32-bit surfaces with alpha in the high bits */
+    if (face->format != SDL_PIXELFORMAT_ARGB8888) {
+        tmp = SDL_ConvertSurface(face, SDL_PIXELFORMAT_ARGB8888);
+        SDLTest_AssertCheck(tmp != NULL, "Verify tmp surface is not NULL");
+        if (tmp == NULL) {
+            return TEST_ABORTED;
+        }
+        SDL_DestroySurface(face);
+        face = tmp;
     }
 
     /* Create a temporary surface to trigger RLE encoding during blit */
@@ -883,6 +895,8 @@ static int SDLCALL surface_testSurfaceRLEPixels(void *arg)
     a = SDL_DuplicateSurface(face);
     SDLTest_AssertCheck(a != NULL, "Verify result from SDL_DuplicateSurface() with RLE pixels is not NULL");
     SDLTest_AssertCheck(SDL_SurfaceHasRLE(a), "Verify result from SDL_DuplicateSurface() with RLE pixels has RLE set");
+    ret = SDLTest_CompareSurfaces(a, face, 0);
+    SDLTest_AssertCheck(ret == 0, "Validate result from SDLTest_CompareSurfaces, expected: 0, got: %i", ret);
 
     /* Verify that blitting from an RLE surface does RLE encode it */
     SDLTest_AssertCheck(!SDL_MUSTLOCK(a), "Verify initial RLE surface does not need to be locked");
@@ -891,6 +905,8 @@ static int SDLCALL surface_testSurfaceRLEPixels(void *arg)
     SDLTest_AssertCheck(result, "Verify result from SDL_BlitSurface() with RLE surface is true");
     SDLTest_AssertCheck(SDL_MUSTLOCK(a), "Verify RLE surface after blit needs to be locked");
     SDLTest_AssertCheck(a->pixels == NULL, "Verify RLE surface after blit does not have pixels available");
+    ret = SDLTest_CompareSurfaces(tmp, face, 0);
+    SDLTest_AssertCheck(ret == 0, "Validate result from SDLTest_CompareSurfaces, expected: 0, got: %i", ret);
 
     /* Test scaling with RLE pixels */
     b = SDL_ScaleSurface(a, a->w * 2, a->h * 2, SDL_SCALEMODE_NEAREST);
@@ -908,6 +924,8 @@ static int SDLCALL surface_testSurfaceRLEPixels(void *arg)
     b = SDL_ConvertSurfaceAndColorspace(a, SDL_PIXELFORMAT_ABGR8888, NULL, SDL_COLORSPACE_UNKNOWN, 0);
     SDLTest_AssertCheck(b != NULL, "Verify result from SDL_ConvertSurfaceAndColorspace() with RLE pixels is not NULL");
     SDLTest_AssertCheck(SDL_SurfaceHasRLE(b), "Verify result from SDL_ConvertSurfaceAndColorspace() with RLE pixels has RLE set");
+    ret = SDLTest_CompareSurfacesIgnoreTransparentPixels(b, face, 0);
+    SDLTest_AssertCheck(ret == 0, "Validate result from SDLTest_CompareSurfaces, expected: 0, got: %i", ret);
     SDL_BlitSurface(a, NULL, tmp, NULL);
     SDL_DestroySurface(b);
     b = NULL;
