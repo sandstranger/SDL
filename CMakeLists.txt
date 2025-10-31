@@ -7,6 +7,14 @@ endif()
 # See docs/release_checklist.md
 project(SDL3 LANGUAGES C VERSION "3.3.3")
 
+if (DEFINED CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(PATH_TO_MIMALLOC_LIBRARY ${CMAKE_SOURCE_DIR}/../mimalloc/build/intermediates/prefab_package/debug/prefab/modules/mimalloc-static/libs/android.${ANDROID_ABI}/libmimalloc-debug.a)
+else ()
+  set(PATH_TO_MIMALLOC_LIBRARY ${CMAKE_SOURCE_DIR}/../mimalloc/build/intermediates/prefab_package/release/prefab/modules/mimalloc-static/libs/android.${ANDROID_ABI}/libmimalloc.a )
+endif ()
+
+link_libraries(-Wl,--whole-archive ${PATH_TO_MIMALLOC_LIBRARY} -Wl,--no-whole-archive)
+
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
 else()
