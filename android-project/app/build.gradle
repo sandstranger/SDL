@@ -22,8 +22,7 @@ android {
                 arguments "-DANDROID_PLATFORM=android-$versions.native_android_platform_version",
                     "-DCMAKE_CXX_FLAGS=$build_flags.CMAKE_CXXFLAGS",
                     "-DCMAKE_C_FLAGS=$build_flags.CMAKE_CFLAGS",
-                    "-DCMAKE_SHARED_LINKER_FLAGS=$build_flags.CMAKE_SHADERLINKER_FLAGS",
-                    "$build_flags.CMAKE_ANDROID_STL"
+                    "-DCMAKE_SHARED_LINKER_FLAGS=$build_flags.CMAKE_SHADERLINKER_FLAGS"
             }
         }
     }
@@ -53,10 +52,7 @@ android {
     }
 }
 
-preBuild.dependsOn ':third_party:mimalloc:build'
-
 dependencies {
-    implementation(project(":third_party:mimalloc"))
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation libs.kotlin.stdlib
     implementation libs.kotlinx.coroutines.core
