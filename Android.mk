@@ -80,9 +80,14 @@ LOCAL_CFLAGS += -O3 -Wno-unused-parameter -Wno-sign-compare
 
 LOCAL_CXXFLAGS += -std=gnu++11
 
-LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
-LOCAL_LDFLAGS := -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld -Wl,--no-undefined
+ifeq ($(APP_OPTIM),debug)
+	LOCAL_LDLIBS += -Wl,--whole-archive $(LOCAL_PATH)/../mimalloc/build/intermediates/prefab_package/debug/prefab/modules/mimalloc-static/libs/android.$(TARGET_ARCH_ABI)/libmimalloc-debug.a -Wl,--no-whole-archive
+else
+	LOCAL_LDLIBS += -Wl,--whole-archive $(LOCAL_PATH)/../mimalloc/build/intermediates/prefab_package/release/prefab/modules/mimalloc-static/libs/android.$(TARGET_ARCH_ABI)/libmimalloc.a -Wl,--no-whole-archive
+endif
 
+LOCAL_LDLIBS += -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
+LOCAL_LDFLAGS := -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld -Wl,--no-undefined
 ifeq ($(NDK_DEBUG),1)
     cmd-strip :=
 endif
