@@ -19,7 +19,6 @@ android {
                 arguments += build_flags.ndk_build_platform
                 arguments += build_flags.compiling_arguments
                 arguments += build_flags.ndk_build_flags
-                arguments += build_flags.ndk_build_android_stl
                 cFlags  = build_flags.common_c_flags
                 cppFlags = build_flags.common_cpp_flags
             }
@@ -53,10 +52,7 @@ android {
     }
 }
 
-preBuild.dependsOn ':third_party:mimalloc:build'
-
 dependencies {
-    implementation(project(":third_party:mimalloc"))
     implementation libs.kotlin.stdlib
     implementation libs.kotlinx.coroutines.core
     implementation libs.androidx.appcompat
