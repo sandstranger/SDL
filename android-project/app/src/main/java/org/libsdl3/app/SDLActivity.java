@@ -462,8 +462,13 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         // Set up the surface
         mSurface = createSDLSurface(this);
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        params.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+        mSurface.setLayoutParams(params);
 
         mLayout = new RelativeLayout(this);
+        mLayout.setBackgroundColor(Color.BLACK);
         mLayout.addView(mSurface);
 
         // Get our current screen orientation and pass it down.
