@@ -217,6 +217,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     // Key events
     @Override
     public boolean onKey(View v, int keyCode, KeyEvent event) {
+        InputKt.onEscapeBtnClicked(keyCode, event);
         return SDLActivity.handleKeyEvent(v, keyCode, event, null);
     }
 

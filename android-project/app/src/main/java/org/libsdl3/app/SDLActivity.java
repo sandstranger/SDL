@@ -43,6 +43,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -1413,7 +1414,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         @Override
         public void run() {
-            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
+           /* RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
             params.leftMargin = x;
             params.topMargin = y;
 
@@ -1434,7 +1435,24 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
             if (imm.isAcceptingText()) {
                 onNativeScreenKeyboardShown();
-            }
+            }*/
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setTitle("Virtual input");
+
+            final EditText input = new EditText(getContext());
+            builder.setView(input);
+
+            builder.setPositiveButton("OK", (dialog, which) -> {
+                String text = input.getText().toString();
+                SDLInputConnection.nativeCommitText(text, 0);
+                InputKt.onKeyDown(KeyEvent.KEYCODE_ENTER, 200);
+            });
+            builder.setNegativeButton("Cancel", (dialog, which) -> {
+                dialog.cancel();
+            });
+
+            builder.show();
         }
     }
 
