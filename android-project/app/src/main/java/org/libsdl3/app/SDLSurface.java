@@ -22,6 +22,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import org.libsdl3.app.SDLGenericMotionListener_API14;
 
 import android.view.ScaleGestureDetector;
 
@@ -43,13 +44,13 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     protected Display mDisplay;
 
     // Keep track of the surface size to normalize touch events
-    protected float mWidth, mHeight;
+    protected static float mWidth, mHeight;
 
     // Is SurfaceView ready for rendering
     protected boolean mIsSurfaceReady;
 
     // Pinch events
-    private final ScaleGestureDetector scaleGestureDetector;
+    private static ScaleGestureDetector scaleGestureDetector;
 
     // Startup
     protected SDLSurface(Context context) {
@@ -103,7 +104,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
             setMeasuredDimension(widthSize, heightSize);
         }
     }
-    
+
     protected void handlePause() {
         enableSensor(Sensor.TYPE_ACCELEROMETER, false);
     }
@@ -120,6 +121,10 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 
     protected Surface getNativeSurface() {
         return getHolder().getSurface();
+    }
+
+    public static ScaleGestureDetector getScaleGestureDetector() {
+        return scaleGestureDetector;
     }
 
     // Called when we have a valid drawing surface
@@ -251,7 +256,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         return SDLActivity.handleKeyEvent(v, keyCode, event, null);
     }
 
-    private float getNormalizedX(float x)
+    public static float getNormalizedX(float x)
     {
         if (mWidth <= 1) {
             return 0.5f;
@@ -260,7 +265,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         }
     }
 
-    private float getNormalizedY(float y)
+    public static float getNormalizedY(float y)
     {
         if (mHeight <= 1) {
             return 0.5f;
