@@ -1440,6 +1440,14 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("Virtual input");
 
+            builder.setOnCancelListener(dialog -> {
+                onNativeScreenKeyboardHidden();
+            });
+
+            builder.setOnDismissListener(dialog -> {
+                onNativeScreenKeyboardHidden();
+            });
+
             final EditText input = new EditText(getContext());
             builder.setView(input);
 
@@ -1452,6 +1460,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
                 dialog.cancel();
             });
 
+            onNativeScreenKeyboardShown();
             builder.show();
         }
     }
