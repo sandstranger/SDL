@@ -16,14 +16,14 @@ android {
             abiFilters = []
             abiFilters.addAll(abi_filters)
         }
+
         externalNativeBuild {
-            ndkBuild {
-                arguments += build_flags.ndk_build_platform
-                arguments += build_flags.compiling_arguments
-                arguments += build_flags.ndk_build_flags
-                arguments += build_flags.ndk_build_android_stl
-                cFlags  = build_flags.common_c_flags
-                cppFlags = build_flags.common_cpp_flags
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-$versions.native_android_platform_version",
+                    "-DCMAKE_CXX_FLAGS=$build_flags.CMAKE_CXXFLAGS",
+                    "-DCMAKE_C_FLAGS=$build_flags.CMAKE_CFLAGS",
+                    "-DCMAKE_SHARED_LINKER_FLAGS=$build_flags.CMAKE_SHADERLINKER_FLAGS",
+                    "$build_flags.CMAKE_ANDROID_STL"
             }
         }
     }
@@ -34,8 +34,9 @@ android {
         }
     }
     externalNativeBuild {
-        ndkBuild {
-            path "$rootDir/third_party/sdl3/Android.mk"
+        cmake {
+            path "$rootDir/third_party/sdl3/CMakeLists.txt"
+            version versions.cmake_version
         }
     }
     buildToolsVersion versions.build_tools_version
