@@ -22,7 +22,7 @@ public class SDLControllerManager
 
     static native void nativeSetupJNI();
 
-    static native void nativeAddJoystick(int device_id, String name, String desc,
+    public static native void nativeAddJoystick(int device_id, String name, String desc,
                                                 int vendor_id, int product_id,
                                                 int button_mask,
                                                 int naxes, int axis_mask, int nhats, boolean can_rumble);
@@ -31,7 +31,7 @@ public class SDLControllerManager
     static native void nativeRemoveHaptic(int device_id);
     static public native boolean onNativePadDown(int device_id, int keycode);
     static public native boolean onNativePadUp(int device_id, int keycode);
-    static native void onNativeJoy(int device_id, int axis,
+    public static native void onNativeJoy(int device_id, int axis,
                                           float value);
     static native void onNativeHat(int device_id, int hat_id,
                                           int x, int y);
