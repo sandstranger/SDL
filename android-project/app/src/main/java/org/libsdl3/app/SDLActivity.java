@@ -68,6 +68,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     private static final int SDL_MAJOR_VERSION = 3;
     private static final int SDL_MINOR_VERSION = 3;
     private static final int SDL_MICRO_VERSION = 3;
+
+    public static boolean useStandardSDLInput = false;
+
 /*
     // Display InputType.SOURCE/CLASS of events and devices
     //
@@ -1413,31 +1416,33 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
                 onNativeScreenKeyboardShown();
             }*/
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("Virtual input");
+            if (useStandardSDLInput) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                builder.setTitle("Virtual input");
 
-            builder.setOnCancelListener(dialog -> {
-                onNativeScreenKeyboardHidden();
-            });
+                builder.setOnCancelListener(dialog -> {
+                    onNativeScreenKeyboardHidden();
+                });
 
-            builder.setOnDismissListener(dialog -> {
-                onNativeScreenKeyboardHidden();
-            });
+                builder.setOnDismissListener(dialog -> {
+                    onNativeScreenKeyboardHidden();
+                });
 
-            final EditText input = new EditText(getContext());
-            builder.setView(input);
+                final EditText input = new EditText(getContext());
+                builder.setView(input);
 
-            builder.setPositiveButton("OK", (dialog, which) -> {
-                String text = input.getText().toString();
-                SDLInputConnection.nativeCommitText(text, 0);
-                Input.onKeyDown(KeyEvent.KEYCODE_ENTER, 200, Input.INPUT_DELAY_MILLIS, 1);
-            });
-            builder.setNegativeButton("Cancel", (dialog, which) -> {
-                dialog.cancel();
-            });
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    String text = input.getText().toString();
+                    SDLInputConnection.nativeCommitText(text, 0);
+                    Input.onKeyDown(KeyEvent.KEYCODE_ENTER, 200, Input.INPUT_DELAY_MILLIS, 1);
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> {
+                    dialog.cancel();
+                });
 
-            onNativeScreenKeyboardShown();
-            builder.show();
+                onNativeScreenKeyboardShown();
+                builder.show();
+            }
         }
     }
 
