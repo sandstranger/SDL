@@ -15,8 +15,13 @@ private val inputCoroutineScope = CoroutineScope(Dispatchers.Default)
 
 fun onKeyDown(keyCode: Int,startDelayMS : Long = 0, delayBeforeKeyRelease : Long = 0,
               repeatCount : Int = 1) {
-    inputCoroutineScope.launch {
-        onKeyDownTask(keyCode, startDelayMS, delayBeforeKeyRelease,repeatCount)
+    if (startDelayMS == 0L && delayBeforeKeyRelease == 0L){
+        onKeyDown(keyCode)
+    }
+    else{
+        inputCoroutineScope.launch {
+            onKeyDownTask(keyCode, startDelayMS, delayBeforeKeyRelease,repeatCount)
+        }
     }
 }
 
@@ -26,8 +31,8 @@ internal fun onEscapeBtnClicked (keyCode : Int, event : KeyEvent) {
     }
 }
 
-private suspend fun onKeyDownTask(keyCode: Int,startDelayMS : Long, delayBeforeKeyRelease : Long,
-                                  repeatCount : Int){
+suspend fun onKeyDownTask(keyCode: Int,startDelayMS : Long = 0L, delayBeforeKeyRelease : Long = 0L,
+                                  repeatCount : Int = 1){
     for (i in 0 until repeatCount) {
         if (startDelayMS > 0) {
             delay(startDelayMS)
@@ -38,4 +43,9 @@ private suspend fun onKeyDownTask(keyCode: Int,startDelayMS : Long, delayBeforeK
         }
         SDLActivity.onNativeKeyUp(keyCode)
     }
+}
+
+private fun onKeyDown (keyCode: Int){
+    SDLActivity.onNativeKeyDown(keyCode)
+    SDLActivity.onNativeKeyUp(keyCode)
 }
