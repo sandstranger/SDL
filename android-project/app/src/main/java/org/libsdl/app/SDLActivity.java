@@ -62,6 +62,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     private static final int SDL_MAJOR_VERSION = 2;
     private static final int SDL_MINOR_VERSION = 33;
     private static final int SDL_MICRO_VERSION = 0;
+
+    public static boolean useStandardSDLInput = false;
+
 /*
     // Display InputType.SOURCE/CLASS of events and devices
     //
@@ -1264,27 +1267,29 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
             mScreenKeyboardShown = true;*/
 
-            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("Virtual input");
+            if (useStandardSDLInput) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                builder.setTitle("Virtual input");
 
-            final EditText input = new EditText(getContext());
-            builder.setView(input);
+                final EditText input = new EditText(getContext());
+                builder.setView(input);
 
-            builder.setPositiveButton("OK", (dialog, which) -> {
-                mScreenKeyboardShown = false;
-                String text = input.getText().toString();
-                SDLInputConnection.nativeCommitText(text, 0);
-                Input.onKeyDown(KeyEvent.KEYCODE_ENTER, 200, Input.INPUT_DELAY_MILLIS,
-                    1);
-            });
-            builder.setNegativeButton("Cancel", (dialog, which) -> {
-                mScreenKeyboardShown = false;
-                dialog.cancel();
-            });
+                builder.setPositiveButton("OK", (dialog, which) -> {
+                    mScreenKeyboardShown = false;
+                    String text = input.getText().toString();
+                    SDLInputConnection.nativeCommitText(text, 0);
+                    Input.onKeyDown(KeyEvent.KEYCODE_ENTER, 200, Input.INPUT_DELAY_MILLIS,
+                        1);
+                });
+                builder.setNegativeButton("Cancel", (dialog, which) -> {
+                    mScreenKeyboardShown = false;
+                    dialog.cancel();
+                });
 
-            builder.show();
+                builder.show();
 
-            mScreenKeyboardShown = true;
+                mScreenKeyboardShown = true;
+            }
         }
     }
 
