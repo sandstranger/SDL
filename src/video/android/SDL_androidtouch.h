@@ -24,6 +24,7 @@
 
 extern void Android_InitTouch(void);
 extern void Android_QuitTouch(void);
-extern void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_finger_id_in, int action, float x, float y, float p);
+extern void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_finger_id_in,
+                            int action, float x, float y, float p,bool invokePressEvents);
 
 /* vi: set ts=4 sw=4 expandtab: */

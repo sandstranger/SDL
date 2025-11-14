@@ -18,6 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include <stdbool.h>
 #include "../SDL_internal.h"
 
 #ifndef SDL_mouse_c_h_
@@ -154,7 +155,8 @@ extern int SDL_SetMouseSystemScale(int num_values, const float *values);
 extern int SDL_SendMouseMotion(SDL_Window *window, SDL_MouseID mouseID, int relative, int x, int y);
 
 /* Send a mouse button event */
-extern int SDL_SendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button);
+extern int SDL_SendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button,
+                               bool invokePressEvents);
 
 /* Send a mouse button event with a click count */
 extern int SDL_SendMouseButtonClicks(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks);

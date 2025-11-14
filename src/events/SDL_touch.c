@@ -18,6 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include <stdbool.h>
 #include "../SDL_internal.h"
 
 /* General touch handling code for SDL */
@@ -234,7 +235,7 @@ static int SDL_DelFinger(SDL_Touch *touch, SDL_FingerID fingerid)
 }
 
 int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,
-                  SDL_bool down, float x, float y, float pressure)
+                  SDL_bool down, float x, float y, float pressure,bool invokePressEvents)
 {
     int posted;
     SDL_Finger *finger;
@@ -276,11 +277,11 @@ int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,
                                 pos_y = window->h - 1;
                             }
                             SDL_SendMouseMotion(window, SDL_TOUCH_MOUSEID, 0, pos_x, pos_y);
-                            SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_PRESSED, SDL_BUTTON_LEFT);
+                            SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_PRESSED, SDL_BUTTON_LEFT, invokePressEvents);
                         }
                     } else {
                         if (finger_touching == SDL_TRUE && track_touchid == id && track_fingerid == fingerid) {
-                            SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_RELEASED, SDL_BUTTON_LEFT);
+                            SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_RELEASED, SDL_BUTTON_LEFT, invokePressEvents);
                         }
                     }
                 }
@@ -312,7 +313,7 @@ int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,
         if (finger) {
             /* This finger is already down.
                Assume the finger-up for the previous touch was lost, and send it. */
-            SDL_SendTouch(id, fingerid, window, SDL_FALSE, x, y, pressure);
+            SDL_SendTouch(id, fingerid, window, SDL_FALSE, x, y, pressure, true);
         }
 
         if (SDL_AddFinger(touch, fingerid, x, y, pressure) < 0) {
@@ -414,7 +415,7 @@ int SDL_SendTouchMotion(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *windo
 
     finger = SDL_GetFinger(touch, fingerid);
     if (!finger) {
-        return SDL_SendTouch(id, fingerid, window, SDL_TRUE, x, y, pressure);
+        return SDL_SendTouch(id, fingerid, window, SDL_TRUE, x, y, pressure, true);
     }
 
     xrel = x - finger->x;

@@ -735,7 +735,8 @@ static SDL_MouseClickState *GetMouseClickState(SDL_Mouse *mouse, Uint8 button)
     return &mouse->clickstate[button];
 }
 
-static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
+static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button,
+                                      int clicks,bool invokePressEvents)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     int posted;
@@ -760,7 +761,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
             if (window) {
                 float fx = (float)mouse->x / (float)window->w;
                 float fy = (float)mouse->y / (float)window->h;
-                SDL_SendTouch(SDL_MOUSE_TOUCHID, 0, window, track_mouse_down, fx, fy, 1.0f);
+                SDL_SendTouch(SDL_MOUSE_TOUCHID, 0, window, track_mouse_down, fx, fy, 1.0f, true);
             }
         }
     }
@@ -824,7 +825,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
 
     /* Post the event, if desired */
     posted = 0;
-    if (SDL_GetEventState(type) == SDL_ENABLE) {
+    if (SDL_GetEventState(type) == SDL_ENABLE && invokePressEvents) {
         SDL_Event event;
         event.type = type;
         event.button.windowID = mouse->focus ? mouse->focus->id : 0;
@@ -853,12 +854,12 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
 int SDL_SendMouseButtonClicks(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button, int clicks)
 {
     clicks = SDL_max(clicks, 0);
-    return SDL_PrivateSendMouseButton(window, mouseID, state, button, clicks);
+    return SDL_PrivateSendMouseButton(window, mouseID, state, button, clicks, true);
 }
 
-int SDL_SendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button)
+int SDL_SendMouseButton(SDL_Window *window, SDL_MouseID mouseID, Uint8 state, Uint8 button,bool invokePressEvents)
 {
-    return SDL_PrivateSendMouseButton(window, mouseID, state, button, -1);
+    return SDL_PrivateSendMouseButton(window, mouseID, state, button, -1, invokePressEvents);
 }
 
 int SDL_SendMouseWheel(SDL_Window *window, SDL_MouseID mouseID, float x, float y, SDL_MouseWheelDirection direction)

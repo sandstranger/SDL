@@ -18,6 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include <stdbool.h>
 #include "../SDL_internal.h"
 #include "../../include/SDL_touch.h"
 
@@ -45,7 +46,7 @@ extern SDL_Touch *SDL_GetTouch(SDL_TouchID id);
 
 /* Send a touch down/up event for a touch */
 extern int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,
-                         SDL_bool down, float x, float y, float pressure);
+                         SDL_bool down, float x, float y, float pressure,bool invokePressEvents);
 
 /* Send a touch motion event for a touch */
 extern int SDL_SendTouchMotion(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,

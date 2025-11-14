@@ -87,7 +87,7 @@ void Java_org_libsdl_app_SDLActivity_sendRelativeMouseMotion(JNIEnv *env, jclass
 }
 
 void Java_org_libsdl_app_SDLActivity_sendMouseButton(JNIEnv *env, jclass cls, int state, int button) {
-    SDL_SendMouseButton(Android_Window, 0, state, button);
+    SDL_SendMouseButton(Android_Window, 0, state, button, true);
 }
 
 
@@ -140,7 +140,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost)(
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeTouch)(
     JNIEnv *env, jclass jcls,
     jint touch_device_id_in, jint pointer_finger_id_in,
-    jint action, jfloat x, jfloat y, jfloat p);
+    jint action, jfloat x, jfloat y, jfloat p, jboolean invokePressEvents);
 
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeMouse)(
     JNIEnv *env, jclass jcls,
@@ -216,7 +216,7 @@ static JNINativeMethod SDLActivity_tab[] = {
     { "onNativeKeyUp", "(I)V", SDL_JAVA_INTERFACE(onNativeKeyUp) },
     { "onNativeSoftReturnKey", "()Z", SDL_JAVA_INTERFACE(onNativeSoftReturnKey) },
     { "onNativeKeyboardFocusLost", "()V", SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost) },
-    { "onNativeTouch", "(IIIFFF)V", SDL_JAVA_INTERFACE(onNativeTouch) },
+    { "onNativeTouch", "(IIIFFFZ)V", SDL_JAVA_INTERFACE(onNativeTouch) },
     { "onNativeMouse", "(IIFFZ)V", SDL_JAVA_INTERFACE(onNativeMouse) },
     { "onVirtualMouse", "(II)V", SDL_JAVA_INTERFACE(onVirtualMouse) },
     { "onNativeAccel", "(FFF)V", SDL_JAVA_INTERFACE(onNativeAccel) },
@@ -1188,11 +1188,11 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost)(
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeTouch)(
     JNIEnv *env, jclass jcls,
     jint touch_device_id_in, jint pointer_finger_id_in,
-    jint action, jfloat x, jfloat y, jfloat p)
+    jint action, jfloat x, jfloat y, jfloat p,jboolean invokePressEvents)
 {
     SDL_LockMutex(Android_ActivityMutex);
 
-    Android_OnTouch(Android_Window, touch_device_id_in, pointer_finger_id_in, action, x, y, p);
+    Android_OnTouch(Android_Window, touch_device_id_in, pointer_finger_id_in, action, x, y, p, invokePressEvents);
 
     SDL_UnlockMutex(Android_ActivityMutex);
 }

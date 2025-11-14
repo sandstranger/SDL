@@ -226,7 +226,7 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
         button = TranslateButton(changes);
         last_state = state;
         SDL_SendMouseMotion(window, 0, relative, (int)x, (int)y);
-        SDL_SendMouseButton(window, 0, SDL_PRESSED, button);
+        SDL_SendMouseButton(window, 0, SDL_PRESSED, button, true);
         break;
 
     case ACTION_UP:
@@ -234,7 +234,7 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
         button = TranslateButton(changes);
         last_state = state;
         SDL_SendMouseMotion(window, 0, relative, (int)x, (int)y);
-        SDL_SendMouseButton(window, 0, SDL_RELEASED, button);
+        SDL_SendMouseButton(window, 0, SDL_RELEASED, button, true);
         break;
 
     case ACTION_MOVE:
@@ -261,11 +261,11 @@ void Android_OnVirtualMouse(SDL_Window *window, int state, int action)
 
     switch (action) {
     case ACTION_DOWN:
-        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_PRESSED, state);
+        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_PRESSED, state, true);
         break;
 
     case ACTION_UP:
-        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_RELEASED, state);
+        SDL_SendMouseButton(window, SDL_TOUCH_MOUSEID, SDL_RELEASED, state, true);
         break;
 
     default:
