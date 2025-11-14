@@ -263,7 +263,6 @@ void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_
     }
 
     SDL_Mouse *mouse = SDL_GetMouse();
-    Uint8 mouseButtonToUse = invokePressEvents ? SDL_BUTTON_LEFT : UNKNOWN_SDL_BUTTON;
 
     // SDL_HINT_TOUCH_MOUSE_EVENTS: controlling whether touch events should generate synthetic mouse events
     // SDL_HINT_VITA_TOUCH_MOUSE_DEVICE: controlling which touchpad should generate synthetic mouse events, PSVita-only
