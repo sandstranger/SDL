@@ -251,7 +251,8 @@ static void SDL_DelFinger(SDL_Touch *touch, SDL_FingerID fingerid)
     }
 }
 
-void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window, SDL_EventType type, float x, float y, float pressure)
+void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window, SDL_EventType type, float x, float y, float pressure,
+                   bool invokePressEvents)
 {
     SDL_Finger *finger;
     bool down = (type == SDL_EVENT_FINGER_DOWN);
@@ -262,6 +263,7 @@ void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_
     }
 
     SDL_Mouse *mouse = SDL_GetMouse();
+    Uint8 mouseButtonToUse = invokePressEvents ? SDL_BUTTON_LEFT : UNKNOWN_SDL_BUTTON;
 
     // SDL_HINT_TOUCH_MOUSE_EVENTS: controlling whether touch events should generate synthetic mouse events
     // SDL_HINT_VITA_TOUCH_MOUSE_DEVICE: controlling which touchpad should generate synthetic mouse events, PSVita-only
@@ -291,11 +293,15 @@ void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_
                                 pos_y = (float)(window->h - 1);
                             }
                             SDL_SendMouseMotion(timestamp, window, SDL_TOUCH_MOUSEID, false, pos_x, pos_y);
-                            SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID, SDL_BUTTON_LEFT, true);
+                            if (invokePressEvents) {
+                                SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID,
+                                                    SDL_BUTTON_LEFT, true, true);
+                            }
                         }
                     } else {
-                        if (finger_touching == true && track_touchid == id && track_fingerid == fingerid) {
-                            SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID, SDL_BUTTON_LEFT, false);
+                        if (finger_touching == true && track_touchid == id && track_fingerid == fingerid && invokePressEvents) {
+                            SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID,
+                                                SDL_BUTTON_LEFT, false, true);
                         }
                     }
                 }
@@ -326,7 +332,7 @@ void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_
         if (finger) {
             /* This finger is already down.
                Assume the finger-up for the previous touch was lost, and send it. */
-            SDL_SendTouch(timestamp, id, fingerid, window, SDL_EVENT_FINGER_CANCELED, x, y, pressure);
+            SDL_SendTouch(timestamp, id, fingerid, window, SDL_EVENT_FINGER_CANCELED, x, y, pressure, true);
         }
 
         if (!SDL_AddFinger(touch, fingerid, x, y, pressure)) {
@@ -423,7 +429,7 @@ void SDL_SendTouchMotion(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid
 
     finger = SDL_GetFinger(touch, fingerid);
     if (!finger) {
-        SDL_SendTouch(timestamp, id, fingerid, window, SDL_EVENT_FINGER_DOWN, x, y, pressure);
+        SDL_SendTouch(timestamp, id, fingerid, window, SDL_EVENT_FINGER_DOWN, x, y, pressure, true);
         return;
     }
 

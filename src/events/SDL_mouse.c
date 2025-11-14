@@ -900,7 +900,8 @@ static SDL_MouseClickState *GetMouseClickState(SDL_MouseInputSource *source, Uin
     return &source->clickstate[button];
 }
 
-static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down, int clicks)
+static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button,
+                                       bool down, int clicks, bool invokePressEvents)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_EventType type;
@@ -925,7 +926,7 @@ static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL
                 type = track_mouse_down ? SDL_EVENT_FINGER_DOWN : SDL_EVENT_FINGER_UP;
                 float normalized_x = mouse->x / (float)window->w;
                 float normalized_y = mouse->y / (float)window->h;
-                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, type, normalized_x, normalized_y, 1.0f);
+                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, type, normalized_x, normalized_y, 1.0f, true);
             }
         }
     }
@@ -1017,12 +1018,13 @@ static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL
 void SDL_SendMouseButtonClicks(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down, int clicks)
 {
     clicks = SDL_max(clicks, 0);
-    SDL_PrivateSendMouseButton(timestamp, window, mouseID, button, down, clicks);
+    SDL_PrivateSendMouseButton(timestamp, window, mouseID, button, down, clicks, true);
 }
 
-void SDL_SendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down)
+void SDL_SendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down,
+                         bool invokePressEvents)
 {
-    SDL_PrivateSendMouseButton(timestamp, window, mouseID, button, down, -1);
+    SDL_PrivateSendMouseButton(timestamp, window, mouseID, button, down, -1, invokePressEvents);
 }
 
 void SDL_SendMouseWheel(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, float x, float y, SDL_MouseWheelDirection direction)

@@ -389,11 +389,11 @@ void SDL_SendPenTouch(Uint64 timestamp, SDL_PenID instance_id, SDL_Window *windo
                 if (down) {
                     if (!pen_touching) {
                         SDL_SendMouseMotion(timestamp, window, SDL_PEN_MOUSEID, false, x, y);
-                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, SDL_BUTTON_LEFT, true);
+                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, SDL_BUTTON_LEFT, true, true);
                     }
                 } else {
                     if (pen_touching == instance_id) {
-                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, SDL_BUTTON_LEFT, false);
+                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, SDL_BUTTON_LEFT, false, true);
                     }
                 }
             }
@@ -403,7 +403,7 @@ void SDL_SendPenTouch(Uint64 timestamp, SDL_PenID instance_id, SDL_Window *windo
                 const float normalized_x = x / (float)window->w;
                 const float normalized_y = y / (float)window->h;
                 if (!pen_touching || (pen_touching == instance_id)) {
-                    SDL_SendTouch(timestamp, SDL_PEN_TOUCHID, SDL_BUTTON_LEFT, window, touchtype, normalized_x, normalized_y, pen->axes[SDL_PEN_AXIS_PRESSURE]);
+                    SDL_SendTouch(timestamp, SDL_PEN_TOUCHID, SDL_BUTTON_LEFT, window, touchtype, normalized_x, normalized_y, pen->axes[SDL_PEN_AXIS_PRESSURE], true);
                 }
             }
         }
@@ -587,7 +587,7 @@ void SDL_SendPenButton(Uint64 timestamp, SDL_PenID instance_id, SDL_Window *wind
                         SDL_BUTTON_X2
                     };
                     if (button < SDL_arraysize(mouse_buttons)) {
-                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, mouse_buttons[button], down);
+                        SDL_SendMouseButton(timestamp, window, SDL_PEN_MOUSEID, mouse_buttons[button], down, true);
                     }
                 }
             }

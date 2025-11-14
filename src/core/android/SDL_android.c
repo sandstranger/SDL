@@ -119,7 +119,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost)(
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeTouch)(
     JNIEnv *env, jclass jcls,
     jint touch_device_id_in, jint pointer_finger_id_in,
-    jint action, jfloat x, jfloat y, jfloat p);
+    jint action, jfloat x, jfloat y, jfloat p, jboolean invokePressEvents);
 
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativePinchStart)(
     JNIEnv *env, jclass jcls);
@@ -230,7 +230,7 @@ static JNINativeMethod SDLActivity_tab[] = {
     { "onNativeKeyUp", "(I)V", SDL_JAVA_INTERFACE(onNativeKeyUp) },
     { "onNativeSoftReturnKey", "()Z", SDL_JAVA_INTERFACE(onNativeSoftReturnKey) },
     { "onNativeKeyboardFocusLost", "()V", SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost) },
-    { "onNativeTouch", "(IIIFFF)V", SDL_JAVA_INTERFACE(onNativeTouch) },
+    { "onNativeTouch", "(IIIFFFZ)V", SDL_JAVA_INTERFACE(onNativeTouch) },
     { "onNativePinchStart", "()V", SDL_JAVA_INTERFACE(onNativePinchStart) },
     { "onNativePinchUpdate", "(F)V", SDL_JAVA_INTERFACE(onNativePinchUpdate) },
     { "onNativePinchEnd", "()V", SDL_JAVA_INTERFACE(onNativePinchEnd) },
@@ -1370,11 +1370,11 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeKeyboardFocusLost)(
 JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeTouch)(
     JNIEnv *env, jclass jcls,
     jint touch_device_id_in, jint pointer_finger_id_in,
-    jint action, jfloat x, jfloat y, jfloat p)
+    jint action, jfloat x, jfloat y, jfloat p,jboolean invokePressEvents)
 {
     SDL_LockMutex(Android_ActivityMutex);
 
-    Android_OnTouch(Android_Window, touch_device_id_in, pointer_finger_id_in, action, x, y, p);
+    Android_OnTouch(Android_Window, touch_device_id_in, pointer_finger_id_in, action, x, y, p, invokePressEvents);
 
     SDL_UnlockMutex(Android_ActivityMutex);
 }

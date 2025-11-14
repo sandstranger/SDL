@@ -158,6 +158,7 @@ typedef struct SDL_CursorFrameInfo
  */
 typedef Uint32 SDL_MouseButtonFlags;
 
+#define UNKNOWN_SDL_BUTTON -100
 #define SDL_BUTTON_LEFT     1
 #define SDL_BUTTON_MIDDLE   2
 #define SDL_BUTTON_RIGHT    3
@@ -203,10 +204,10 @@ typedef Uint32 SDL_MouseButtonFlags;
  * \sa SDL_SetRelativeMouseTransform
  */
 typedef void (SDLCALL *SDL_MouseMotionTransformCallback)(
-    void *userdata, 
-    Uint64 timestamp, 
-    SDL_Window *window, 
-    SDL_MouseID mouseID, 
+    void *userdata,
+    Uint64 timestamp,
+    SDL_Window *window,
+    SDL_MouseID mouseID,
     float *x, float *y
 );
 
