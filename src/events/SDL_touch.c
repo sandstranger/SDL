@@ -293,15 +293,13 @@ void SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_
                                 pos_y = (float)(window->h - 1);
                             }
                             SDL_SendMouseMotion(timestamp, window, SDL_TOUCH_MOUSEID, false, pos_x, pos_y);
-                            if (invokePressEvents) {
                                 SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID,
-                                                    SDL_BUTTON_LEFT, true, true);
-                            }
+                                                    SDL_BUTTON_LEFT, true, invokePressEvents);
                         }
                     } else {
-                        if (finger_touching == true && track_touchid == id && track_fingerid == fingerid && invokePressEvents) {
+                        if (finger_touching == true && track_touchid == id && track_fingerid == fingerid) {
                             SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID,
-                                                SDL_BUTTON_LEFT, false, true);
+                                                SDL_BUTTON_LEFT, false, invokePressEvents);
                         }
                     }
                 }
