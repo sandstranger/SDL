@@ -77,8 +77,8 @@ int Java_org_libsdl_app_SDLActivity_getMouseY(JNIEnv *env, jclass cls, jobject o
     return ret;
 }
 
-int Java_org_libsdl_app_SDLActivity_isMouseShown(JNIEnv *env, jclass cls, jobject obj) {
-    return SDL_ShowCursor(SDL_QUERY);
+bool Java_org_libsdl_app_SDLActivity_isMouseShown(JNIEnv *env, jclass cls, jobject obj) {
+    return SDL_ShowCursor(SDL_QUERY) > 0 ? true : false;
 }
 
 extern SDL_Window *Android_Window;
