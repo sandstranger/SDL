@@ -234,6 +234,10 @@ bool UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properti
         if (!SetupWindowData(_this, window, uiwindow, true)) {
             return false;
         }
+
+#ifdef SDL_PLATFORM_VISIONOS
+        SDL_SetWindowSize(window, window->w, window->h);
+#endif
     }
 
     return true;
@@ -245,6 +249,21 @@ void UIKit_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
         SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)window->internal;
         data.viewcontroller.title = @(window->title);
     }
+}
+
+void UIKit_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
+{
+#ifdef SDL_PLATFORM_VISIONOS
+    @autoreleasepool {
+        SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)window->internal;
+        UIWindowScene *scene = data.uiwindow.windowScene;
+        CGSize size = { window->pending.w, window->pending.h };
+        UIWindowSceneGeometryPreferences *preferences = [[UIWindowSceneGeometryPreferencesVision alloc] initWithSize:size];
+        [scene requestGeometryUpdateWithPreferences:preferences errorHandler:^(NSError * _Nonnull error) {
+            // Request failed, no worries
+        }];
+    }
+#endif
 }
 
 void UIKit_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)

@@ -1729,7 +1729,7 @@ SDL_VideoDisplay *SDL_GetVideoDisplayForFullscreenWindow(SDL_Window *window)
 {
     SDL_DisplayID displayID = 0;
 
-    CHECK_WINDOW_MAGIC(window, 0);
+    CHECK_WINDOW_MAGIC(window, NULL);
 
     // An explicit fullscreen display overrides all
     if (window->current_fullscreen_mode.displayID) {
@@ -4962,7 +4962,7 @@ void SDL_GL_ResetAttributes(void)
     }
 
     _this->gl_config.flags = 0;
-    _this->gl_config.framebuffer_srgb_capable = 0;
+    _this->gl_config.framebuffer_srgb_capable = -1;
     _this->gl_config.no_error = 0;
     _this->gl_config.release_behavior = SDL_GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH;
     _this->gl_config.reset_notification = SDL_GL_CONTEXT_RESET_NO_NOTIFICATION;
