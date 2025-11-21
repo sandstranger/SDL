@@ -70,6 +70,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     private static final int SDL_MICRO_VERSION = 3;
 
     public static boolean useStandardSDLInput = false;
+    protected boolean gameResourcesFound = true;
 
 /*
     // Display InputType.SOURCE/CLASS of events and devices
@@ -358,7 +359,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         Log.v(TAG, "Model: " + Build.MODEL);
         Log.v(TAG, "onCreate()");
         super.onCreate(savedInstanceState);
-
+        if (!gameResourcesFound){
+            return;
+        }
 
         /* Control activity re-creation */
         if (mSDLMainFinished || mActivityCreated) {
@@ -542,6 +545,10 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         Log.v(TAG, "onPause()");
         super.onPause();
 
+        if (!gameResourcesFound){
+            return;
+        }
+
         if (mHIDDeviceManager != null) {
             mHIDDeviceManager.setFrozen(true);
         }
@@ -554,6 +561,10 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     protected void onResume() {
         Log.v(TAG, "onResume()");
         super.onResume();
+
+        if (!gameResourcesFound){
+            return;
+        }
 
         if (mHIDDeviceManager != null) {
             mHIDDeviceManager.setFrozen(false);
@@ -690,6 +701,11 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     @Override
     protected void onDestroy() {
         Log.v(TAG, "onDestroy()");
+
+        if (!gameResourcesFound){
+            super.onDestroy();
+            return;
+        }
 
         if (mHIDDeviceManager != null) {
             HIDDeviceManager.release(mHIDDeviceManager);
