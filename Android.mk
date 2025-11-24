@@ -81,7 +81,7 @@ LOCAL_CFLAGS +=-Wno-unused-parameter -Wno-sign-compare
 LOCAL_CXXFLAGS += -std=gnu++11
 
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
-LOCAL_LDFLAGS := -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld -Wl,--no-undefined
+LOCAL_LDFLAGS := -Wl,--no-undefined
 
 ifeq ($(NDK_DEBUG),1)
     cmd-strip :=
