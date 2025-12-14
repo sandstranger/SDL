@@ -67,7 +67,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
     private static final int SDL_MINOR_VERSION = 3;
-    private static final int SDL_MICRO_VERSION = 3;
+    private static final int SDL_MICRO_VERSION = 5;
 
     public static boolean useStandardSDLInput = false;
     protected boolean gameResourcesFound = true;
