@@ -344,4 +344,6 @@ typedef Uint16 SDL_Keymod;
 #define SDL_KMOD_ALT    (SDL_KMOD_LALT | SDL_KMOD_RALT)     /**< Any Alt key is down. */
 #define SDL_KMOD_GUI    (SDL_KMOD_LGUI | SDL_KMOD_RGUI)     /**< Any GUI key is down. */
 
+extern SDL_DECLSPEC SDL_Scancode SDLCALL TranslateKeycode(int keycode);
+
 #endif /* SDL_keycode_h_ */

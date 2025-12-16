@@ -426,6 +426,7 @@
 #define SDL_GetMouseFocus SDL_GetMouseFocus_REAL
 #define SDL_GetMouseNameForID SDL_GetMouseNameForID_REAL
 #define SDL_GetMouseState SDL_GetMouseState_REAL
+#define TranslateKeycode TranslateKeycode_REAL
 #define SDL_GetNaturalDisplayOrientation SDL_GetNaturalDisplayOrientation_REAL
 #define SDL_GetNumAllocations SDL_GetNumAllocations_REAL
 #define SDL_GetNumAudioDrivers SDL_GetNumAudioDrivers_REAL

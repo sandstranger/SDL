@@ -16,6 +16,7 @@ SDL3_0.0.0 {
     SDL_AddTimerNS;
     SDL_AddVulkanRenderSemaphores;
     SDL_AttachVirtualJoystick;
+	TranslateKeycode;
     SDL_AudioDevicePaused;
     SDL_BeginGPUComputePass;
     SDL_BeginGPUCopyPass;
