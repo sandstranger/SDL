@@ -34,6 +34,7 @@ internal fun onEscapeBtnClicked (keyCode : Int, event : KeyEvent) {
 suspend fun onKeyDownTask(keyCode: Int,startDelayMS : Long = 0L, delayBeforeKeyRelease : Long = 0L,
                                   repeatCount : Int = 1){
     for (i in 0 until repeatCount) {
+        SDLActivity.onNativeKeyUp(keyCode)
         if (startDelayMS > 0) {
             delay(startDelayMS)
         }
@@ -46,6 +47,7 @@ suspend fun onKeyDownTask(keyCode: Int,startDelayMS : Long = 0L, delayBeforeKeyR
 }
 
 private fun onKeyDown (keyCode: Int){
+    SDLActivity.onNativeKeyUp(keyCode)
     SDLActivity.onNativeKeyDown(keyCode)
     SDLActivity.onNativeKeyUp(keyCode)
 }
