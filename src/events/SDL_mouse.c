@@ -930,7 +930,7 @@ static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL
                 type = track_mouse_down ? SDL_EVENT_FINGER_DOWN : SDL_EVENT_FINGER_UP;
                 float normalized_x = mouse->x / (float)window->w;
                 float normalized_y = mouse->y / (float)window->h;
-                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, type, normalized_x, normalized_y, 1.0f, true);
+                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, type, normalized_x, normalized_y, 1.0f, invokePressEvents);
             }
         }
     }
