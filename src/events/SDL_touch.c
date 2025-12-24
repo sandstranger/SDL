@@ -313,7 +313,7 @@ int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window,
         if (finger) {
             /* This finger is already down.
                Assume the finger-up for the previous touch was lost, and send it. */
-            SDL_SendTouch(id, fingerid, window, SDL_FALSE, x, y, pressure, true);
+            SDL_SendTouch(id, fingerid, window, SDL_FALSE, x, y, pressure, invokePressEvents);
         }
 
         if (SDL_AddFinger(touch, fingerid, x, y, pressure) < 0) {

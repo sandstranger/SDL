@@ -761,7 +761,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
             if (window) {
                 float fx = (float)mouse->x / (float)window->w;
                 float fy = (float)mouse->y / (float)window->h;
-                SDL_SendTouch(SDL_MOUSE_TOUCHID, 0, window, track_mouse_down, fx, fy, 1.0f, true);
+                SDL_SendTouch(SDL_MOUSE_TOUCHID, 0, window, track_mouse_down, fx, fy, 1.0f, invokePressEvents);
             }
         }
     }
@@ -773,15 +773,17 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
         }
     }
 
+    Uint8 WRONG_BUTTON_ID = 20;
+    Uint8 buttonToSend = invokePressEvents ? button : WRONG_BUTTON_ID;
     /* Figure out which event to perform */
     switch (state) {
     case SDL_PRESSED:
         type = SDL_MOUSEBUTTONDOWN;
-        buttonstate |= SDL_BUTTON(button);
+        buttonstate |= SDL_BUTTON(buttonToSend);
         break;
     case SDL_RELEASED:
         type = SDL_MOUSEBUTTONUP;
-        buttonstate &= ~SDL_BUTTON(button);
+        buttonstate &= ~SDL_BUTTON(buttonToSend);
         break;
     default:
         /* Invalid state -- bail */
