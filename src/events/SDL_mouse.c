@@ -773,17 +773,15 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
         }
     }
 
-    Uint8 WRONG_BUTTON_ID = 20;
-    Uint8 buttonToSend = invokePressEvents ? button : WRONG_BUTTON_ID;
     /* Figure out which event to perform */
     switch (state) {
     case SDL_PRESSED:
         type = SDL_MOUSEBUTTONDOWN;
-        buttonstate |= SDL_BUTTON(buttonToSend);
+        buttonstate |= SDL_BUTTON(button);
         break;
     case SDL_RELEASED:
         type = SDL_MOUSEBUTTONUP;
-        buttonstate &= ~SDL_BUTTON(buttonToSend);
+        buttonstate &= ~SDL_BUTTON(button);
         break;
     default:
         /* Invalid state -- bail */
