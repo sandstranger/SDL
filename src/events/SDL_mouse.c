@@ -40,6 +40,7 @@
 
 /* The mouse state */
 static SDL_Mouse SDL_mouse;
+static bool invokeMouseButtonsEvents = true;
 
 /* for mapping mouse events to touch */
 static SDL_bool track_mouse_down = SDL_FALSE;
@@ -744,6 +745,7 @@ static int SDL_PrivateSendMouseButton(SDL_Window *window, SDL_MouseID mouseID, U
     Uint32 buttonstate;
     SDL_MouseInputSource *source;
 
+    invokeMouseButtonsEvents = invokePressEvents;
     source = GetMouseInputSource(mouse, mouseID);
     if (!source) {
         return 0;
@@ -1018,7 +1020,7 @@ Uint32 SDL_GetMouseState(int *x, int *y)
     if (y) {
         *y = mouse->y;
     }
-    return GetButtonState(mouse, SDL_TRUE);
+    return GetButtonState(mouse, invokeMouseButtonsEvents ? SDL_TRUE : SDL_FALSE);
 }
 
 Uint32 SDL_GetRelativeMouseState(int *x, int *y)
