@@ -304,10 +304,11 @@ int Android_OnHat(int device_id, int hat_id, int x, int y)
     return -1;
 }
 
-int Android_AddJoystick(int device_id, const char *name, const char *desc, int vendor_id, int product_id, SDL_bool is_accelerometer, int button_mask, int naxes, int axis_mask, int nhats, int nballs)
+char * Android_AddJoystick(int device_id, const char *name, const char *desc, int vendor_id, int product_id, SDL_bool is_accelerometer, int button_mask, int naxes, int axis_mask, int nhats, int nballs)
 {
     SDL_joylist_item *item;
     SDL_JoystickGUID guid;
+    bool hasGUID = false;
     int i;
     int result = -1;
 
@@ -344,6 +345,7 @@ int Android_AddJoystick(int device_id, const char *name, const char *desc, int v
         nhats = 0;
     }
 
+    hasGUID = true;
     guid = SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_BLUETOOTH, vendor_id, product_id, 0, NULL, desc, 0, 0);
 
     /* Update the GUID with capability bits */
@@ -402,7 +404,14 @@ int Android_AddJoystick(int device_id, const char *name, const char *desc, int v
 done:
     SDL_UnlockJoysticks();
 
-    return result;
+    if (hasGUID){
+        const int GUID_SIZE = 33;
+        char* guid_str = (char*)malloc(GUID_SIZE * sizeof(char));
+        SDL_JoystickGetGUIDString(guid, guid_str, GUID_SIZE);
+        return guid_str;
+    }
+
+    return "";
 }
 
 int Android_RemoveJoystick(int device_id)
