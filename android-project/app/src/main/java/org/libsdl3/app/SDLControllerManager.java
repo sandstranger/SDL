@@ -22,7 +22,7 @@ public class SDLControllerManager
 
     static native void nativeSetupJNI();
 
-    public static native void nativeAddJoystick(int device_id, String name, String desc,
+    public static native String nativeAddJoystick(int device_id, String name, String desc,
                                                 int vendor_id, int product_id,
                                                 int button_mask,
                                                 int naxes, int axis_mask, int nhats, boolean can_rumble);
