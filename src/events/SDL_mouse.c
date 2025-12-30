@@ -905,6 +905,70 @@ static SDL_MouseClickState *GetMouseClickState(SDL_MouseInputSource *source, Uin
     return &source->clickstate[button];
 }
 
+void SDL_SendVirtualMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down){
+    SDL_Mouse *mouse = SDL_GetMouse();
+    int clicks = -1;
+    SDL_EventType type;
+    SDL_MouseInputSource *source;
+
+    source = GetMouseInputSource(mouse, mouseID, down, button);
+    if (!source) {
+        return;
+    }
+
+    if (down) {
+        type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    } else {
+        type = SDL_EVENT_MOUSE_BUTTON_UP;
+    }
+
+    if (clicks < 0) {
+        SDL_MouseClickState *clickstate = GetMouseClickState(source, button);
+        if (clickstate) {
+            if (down) {
+                Uint64 now = SDL_GetTicks();
+
+                if (now >= (clickstate->last_timestamp + mouse->double_click_time) ||
+                    SDL_fabs(mouse->click_motion_x - clickstate->click_motion_x) > mouse->double_click_radius ||
+                    SDL_fabs(mouse->click_motion_y - clickstate->click_motion_y) > mouse->double_click_radius) {
+                    clickstate->click_count = 0;
+                }
+                clickstate->last_timestamp = now;
+                clickstate->click_motion_x = mouse->click_motion_x;
+                clickstate->click_motion_y = mouse->click_motion_y;
+                if (clickstate->click_count < 255) {
+                    ++clickstate->click_count;
+                }
+            }
+            clicks = clickstate->click_count;
+        } else {
+            clicks = 1;
+        }
+    }
+
+    // Post the event, if desired
+    if (SDL_EventEnabled(type)) {
+        if ((!mouse->relative_mode || mouse->warp_emulation_active) && mouseID != SDL_TOUCH_MOUSEID && mouseID != SDL_PEN_MOUSEID) {
+            // We're not in relative mode, so all mouse events are global mouse events
+            mouseID = SDL_GLOBAL_MOUSE_ID;
+        } else {
+            mouseID = source->mouseID;
+        }
+
+        SDL_Event event;
+        event.type = type;
+        event.common.timestamp = timestamp;
+        event.button.windowID = mouse->focus ? mouse->focus->id : 0;
+        event.button.which = mouseID;
+        event.button.down = down;
+        event.button.button = button;
+        event.button.clicks = (Uint8)SDL_min(clicks, 255);
+        event.button.x = mouse->x;
+        event.button.y = mouse->y;
+        SDL_PushEvent(&event);
+    }
+}
+
 static void SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button,
                                        bool down, int clicks, bool invokePressEvents)
 {

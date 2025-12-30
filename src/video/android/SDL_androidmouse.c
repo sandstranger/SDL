@@ -247,6 +247,8 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
     }
 }
 
+extern void SDL_SendVirtualMouseButton(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, Uint8 button, bool down);
+
 void Android_OnVirtualMouse(SDL_Window *window, int state, int action)
 {
     if (!window) {
@@ -255,11 +257,11 @@ void Android_OnVirtualMouse(SDL_Window *window, int state, int action)
 
     switch (action) {
         case ACTION_DOWN:
-            SDL_SendMouseButton(0,window, SDL_TOUCH_MOUSEID, state,true, true);
+            SDL_SendVirtualMouseButton(0,window, SDL_TOUCH_MOUSEID, state,true);
             break;
 
         case ACTION_UP:
-            SDL_SendMouseButton(0,window, SDL_TOUCH_MOUSEID, state,false, true);
+            SDL_SendVirtualMouseButton(0,window, SDL_TOUCH_MOUSEID, state,false);
             break;
 
         default:
