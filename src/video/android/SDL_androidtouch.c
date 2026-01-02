@@ -96,7 +96,9 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
                           SDL_EVENT_FINGER_UP, 0, 0, p,false);
             oldFingerId = defaultFingerId;
         }
-        oldFingerId = fingerId;
+        if (oldFingerId == defaultFingerId) {
+            oldFingerId = fingerId;
+        }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_DOWN, x, y, p,
                       invokePressEvents);
         break;
@@ -107,12 +109,16 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
 
     case ACTION_UP:
     case ACTION_POINTER_UP:
-        oldFingerId = defaultFingerId;
+        if (oldFingerId == fingerId) {
+            oldFingerId = defaultFingerId;
+        }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_UP, x, y, p, invokePressEvents);
         break;
 
     case ACTION_CANCEL:
-        oldFingerId = defaultFingerId;
+        if (oldFingerId == fingerId) {
+            oldFingerId = defaultFingerId;
+        }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_CANCELED, x, y, p, invokePressEvents);
         break;
 
