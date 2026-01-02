@@ -91,7 +91,7 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
     switch (action) {
     case ACTION_DOWN:
     case ACTION_POINTER_DOWN:
-        if (oldFingerId !=defaultFingerId){
+        if (oldFingerId !=defaultFingerId && oldFingerId == fingerId){
             SDL_SendTouch(0, touchDeviceId, oldFingerId, window,
                           SDL_EVENT_FINGER_UP, 0, 0, p,false);
             oldFingerId = defaultFingerId;
