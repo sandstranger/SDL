@@ -66,6 +66,9 @@ SDL_TouchID Android_ConvertJavaTouchID(int touchID)
     return retval;
 }
 
+static const SDL_FingerID defaultFingerId = -100;
+static SDL_FingerID oldFingerId = defaultFingerId;
+
 void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_finger_id_in, int action, float x, float y, float p,
                      bool invokePressEvents)
 {
@@ -88,6 +91,12 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
     switch (action) {
     case ACTION_DOWN:
     case ACTION_POINTER_DOWN:
+        if (oldFingerId !=defaultFingerId){
+            SDL_SendTouch(touchDeviceId, oldFingerId, window,
+                          SDL_EVENT_FINGER_UP, 0, 0, 0, false);
+            oldFingerId = defaultFingerId;
+        }
+        oldFingerId = fingerId;
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_DOWN, x, y, p,
                       invokePressEvents);
         break;
@@ -98,10 +107,12 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
 
     case ACTION_UP:
     case ACTION_POINTER_UP:
+        oldFingerId = defaultFingerId;
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_UP, x, y, p, invokePressEvents);
         break;
 
     case ACTION_CANCEL:
+        oldFingerId = defaultFingerId;
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_CANCELED, x, y, p, invokePressEvents);
         break;
 
