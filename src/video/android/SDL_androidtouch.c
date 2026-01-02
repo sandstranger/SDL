@@ -30,6 +30,7 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../core/android/SDL_android.h"
+#include "uthash.h"
 
 #define ACTION_DOWN 0
 #define ACTION_UP   1
@@ -38,6 +39,38 @@
 /* #define ACTION_OUTSIDE 4 */
 #define ACTION_POINTER_DOWN 5
 #define ACTION_POINTER_UP   6
+
+typedef struct {
+    int64_t key;
+    UT_hash_handle hh;
+} LongSet;
+
+static LongSet *set = NULL;
+
+static void add_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    if (!e) {
+        e = malloc(sizeof(*e));
+        e->key = key;
+        HASH_ADD(hh, set, key, sizeof(int64_t), e);
+    }
+}
+
+static bool contains_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    return e != NULL;
+}
+
+static void remove_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    if (e) {
+        HASH_DEL(set, e);
+        free(e);
+    }
+}
 
 void Android_InitTouch(void)
 {
@@ -48,9 +81,6 @@ void Android_InitTouch(void)
 void Android_QuitTouch(void)
 {
 }
-
-static const SDL_FingerID defaultFingerId = -100;
-static SDL_FingerID oldFingerId = defaultFingerId;
 
 void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_finger_id_in, int action,
                      float x, float y, float p, bool invokePressEvents)
@@ -71,14 +101,14 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
     switch (action) {
     case ACTION_DOWN:
     case ACTION_POINTER_DOWN:
-        if (oldFingerId !=defaultFingerId && oldFingerId == fingerId){
-            SDL_SendTouch(touchDeviceId, oldFingerId, window,
+        if (contains_long(fingerId)){
+            SDL_SendTouch(touchDeviceId, fingerId, window,
                           SDL_FALSE, 0, 0, 0, false);
-            oldFingerId = defaultFingerId;
+            remove_long(fingerId);
         }
 
-        if (oldFingerId == defaultFingerId){
-            oldFingerId = fingerId;
+        if (!contains_long(fingerId)){
+            add_long(fingerId);
         }
 
         SDL_SendTouch(touchDeviceId, fingerId, window, SDL_TRUE, x, y, p, invokePressEvents);
@@ -90,8 +120,8 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
 
     case ACTION_UP:
     case ACTION_POINTER_UP:
-        if (oldFingerId == fingerId) {
-            oldFingerId = defaultFingerId;
+        if (contains_long(fingerId)){
+            remove_long(fingerId);
         }
         SDL_SendTouch(touchDeviceId, fingerId, window, SDL_FALSE, x, y, p, invokePressEvents);
         break;
