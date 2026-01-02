@@ -41,31 +41,31 @@
 #define ACTION_POINTER_UP   6
 
 typedef struct {
-    int64_t key;
+    uint64_t key;
     UT_hash_handle hh;
 } LongSet;
 
 static LongSet *set = NULL;
 
-static void add_long(int64_t key) {
+static void add_long(uint64_t key) {
     LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
     if (!e) {
         e = malloc(sizeof(*e));
         e->key = key;
-        HASH_ADD(hh, set, key, sizeof(int64_t), e);
+        HASH_ADD(hh, set, key, sizeof(uint64_t), e);
     }
 }
 
-static bool contains_long(int64_t key) {
+static bool contains_long(uint64_t key) {
     LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
     return e != NULL;
 }
 
-static void remove_long(int64_t key) {
+static void remove_long(uint64_t key) {
     LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
     if (e) {
         HASH_DEL(set, e);
         free(e);
