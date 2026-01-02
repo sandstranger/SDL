@@ -20,6 +20,8 @@
 */
 #include "SDL_internal.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
 #ifdef SDL_VIDEO_DRIVER_ANDROID
 
 #include <android/log.h>
@@ -28,6 +30,7 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../core/android/SDL_android.h"
+#include "uthash.h"
 
 #define ACTION_DOWN 0
 #define ACTION_UP   1
@@ -36,6 +39,38 @@
 // #define ACTION_OUTSIDE 4
 #define ACTION_POINTER_DOWN 5
 #define ACTION_POINTER_UP   6
+
+typedef struct {
+    int64_t key;
+    UT_hash_handle hh;
+} LongSet;
+
+static LongSet *set = NULL;
+
+static void add_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    if (!e) {
+        e = malloc(sizeof(*e));
+        e->key = key;
+        HASH_ADD(hh, set, key, sizeof(int64_t), e);
+    }
+}
+
+static bool contains_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    return e != NULL;
+}
+
+static void remove_long(int64_t key) {
+    LongSet *e;
+    HASH_FIND(hh, set, &key, sizeof(int64_t), e);
+    if (e) {
+        HASH_DEL(set, e);
+        free(e);
+    }
+}
 
 void Android_InitTouch(void)
 {
@@ -66,9 +101,6 @@ SDL_TouchID Android_ConvertJavaTouchID(int touchID)
     return retval;
 }
 
-static const SDL_FingerID defaultFingerId = -100;
-static SDL_FingerID oldFingerId = defaultFingerId;
-
 void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_finger_id_in, int action, float x, float y, float p,
                      bool invokePressEvents)
 {
@@ -91,13 +123,13 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
     switch (action) {
     case ACTION_DOWN:
     case ACTION_POINTER_DOWN:
-        if (oldFingerId !=defaultFingerId && oldFingerId == fingerId){
-            SDL_SendTouch(0, touchDeviceId, oldFingerId, window,
-                          SDL_EVENT_FINGER_UP, 0, 0, p,false);
-            oldFingerId = defaultFingerId;
+        if (contains_long(fingerId)) {
+            SDL_SendTouch(0, touchDeviceId, fingerId, window,
+                          SDL_EVENT_FINGER_UP, 0, 0, p, false);
+            remove_long(fingerId);
         }
-        if (oldFingerId == defaultFingerId) {
-            oldFingerId = fingerId;
+        if (!contains_long(fingerId)) {
+            add_long(fingerId);
         }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_DOWN, x, y, p,
                       invokePressEvents);
@@ -109,15 +141,15 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
 
     case ACTION_UP:
     case ACTION_POINTER_UP:
-        if (oldFingerId == fingerId) {
-            oldFingerId = defaultFingerId;
+        if (contains_long(fingerId)){
+            remove_long(fingerId);
         }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_UP, x, y, p, invokePressEvents);
         break;
 
     case ACTION_CANCEL:
-        if (oldFingerId == fingerId) {
-            oldFingerId = defaultFingerId;
+        if (contains_long(fingerId)){
+            remove_long(fingerId);
         }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_CANCELED, x, y, p, invokePressEvents);
         break;
@@ -128,3 +160,5 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
 }
 
 #endif // SDL_VIDEO_DRIVER_ANDROID
+
+#pragma clang diagnostic pop
