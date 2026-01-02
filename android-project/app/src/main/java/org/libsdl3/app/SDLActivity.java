@@ -66,10 +66,11 @@ import org.libsdl3.app.SDLGenericMotionListener_API29;
 public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVisibilityChangeListener {
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
+
     public static boolean useStandardSDLInput = false;
     protected boolean gameResourcesFound = true;
-    private static final int SDL_MINOR_VERSION = 4;
-    private static final int SDL_MICRO_VERSION = 1;
+    private static final int SDL_MINOR_VERSION = 5;
+    private static final int SDL_MICRO_VERSION = 0;
 /*
     // Display InputType.SOURCE/CLASS of events and devices
     //
