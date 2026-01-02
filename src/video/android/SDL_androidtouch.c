@@ -42,34 +42,46 @@
 
 typedef struct {
     uint64_t key;
+    bool value;
     UT_hash_handle hh;
-} LongSet;
+} LongMap;
 
-static LongSet *set = NULL;
+static LongMap *map = NULL;
 
-static void add_long(uint64_t key) {
-    LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
+static void put_long(uint64_t key, bool value) {
+    LongMap *e;
+    HASH_FIND(hh, map, &key, sizeof(uint64_t), e);
     if (!e) {
         e = malloc(sizeof(*e));
         e->key = key;
-        HASH_ADD(hh, set, key, sizeof(uint64_t), e);
+        HASH_ADD(hh, map, key, sizeof(uint64_t), e);
+    }
+    e->value = value;
+}
+
+static bool get_long(uint64_t key, bool *out_value) {
+    LongMap *e;
+    HASH_FIND(hh, map, &key, sizeof(uint64_t), e);
+    if (!e) {
+        return false;
+    }
+    *out_value = e->value;
+    return true;
+}
+
+static void remove_long(uint64_t key) {
+    LongMap *e;
+    HASH_FIND(hh, map, &key, sizeof(uint64_t), e);
+    if (e) {
+        HASH_DEL(map, e);
+        free(e);
     }
 }
 
 static bool contains_long(uint64_t key) {
-    LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
+    LongMap *e;
+    HASH_FIND(hh, map, &key, sizeof(uint64_t), e);
     return e != NULL;
-}
-
-static void remove_long(uint64_t key) {
-    LongSet *e;
-    HASH_FIND(hh, set, &key, sizeof(uint64_t), e);
-    if (e) {
-        HASH_DEL(set, e);
-        free(e);
-    }
 }
 
 void Android_InitTouch(void)
@@ -124,12 +136,14 @@ void Android_OnTouch(SDL_Window *window, int touch_device_id_in, int pointer_fin
     case ACTION_DOWN:
     case ACTION_POINTER_DOWN:
         if (contains_long(fingerId)) {
+            bool savedInvokePressEventsState;
+            get_long(fingerId, &savedInvokePressEventsState);
             SDL_SendTouch(0, touchDeviceId, fingerId, window,
-                          SDL_EVENT_FINGER_UP, 0, 0, p, false);
+                          SDL_EVENT_FINGER_UP, 0, 0, p, savedInvokePressEventsState);
             remove_long(fingerId);
         }
         if (!contains_long(fingerId)) {
-            add_long(fingerId);
+            put_long(fingerId, invokePressEvents);
         }
         SDL_SendTouch(0, touchDeviceId, fingerId, window, SDL_EVENT_FINGER_DOWN, x, y, p,
                       invokePressEvents);
