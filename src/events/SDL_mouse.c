@@ -25,7 +25,7 @@
 #include "../SDL_hints_c.h"
 #include "../video/SDL_sysvideo.h"
 #include "SDL_events_c.h"
-#include "SDL_mouse_c.h"
+#include "SDL3/SDL_mouse_c.h"
 #if defined(SDL_PLATFORM_WINDOWS)
 #include "../core/windows/SDL_windows.h" // For GetDoubleClickTime()
 #endif
@@ -517,6 +517,11 @@ SDL_SystemCursor SDL_GetDefaultSystemCursor(void)
 SDL_Mouse *SDL_GetMouse(void)
 {
     return &SDL_mouse;
+}
+
+void* SDL_GetMouseVoid(void)
+{
+    return (void*) &SDL_mouse;
 }
 
 static SDL_MouseButtonFlags SDL_GetMouseButtonState(SDL_Mouse *mouse, SDL_MouseID mouseID, bool include_touch)

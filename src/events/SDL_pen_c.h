@@ -24,7 +24,7 @@
 #ifndef SDL_pen_c_h_
 #define SDL_pen_c_h_
 
-#include "SDL_mouse_c.h"
+#include "SDL3/SDL_mouse_c.h"
 
 typedef Uint32 SDL_PenCapabilityFlags;
 #define SDL_PEN_CAPABILITY_PRESSURE  (1u << 0)  /**< Provides pressure information on SDL_PEN_AXIS_PRESSURE. */

@@ -25,7 +25,7 @@
 
 #include "SDL_androidmouse.h"
 
-#include "../../events/SDL_mouse_c.h"
+#include "SDL3/SDL_mouse_c.h"
 
 #include "../../core/android/SDL_android.h"
 

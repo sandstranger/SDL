@@ -31,7 +31,7 @@
 #include "SDL_displayevents_c.h"
 #include "SDL_dropevents_c.h"
 #include "SDL_keyboard_c.h"
-#include "SDL_mouse_c.h"
+#include "SDL3/SDL_mouse_c.h"
 #include "SDL_touch_c.h"
 #include "SDL_pen_c.h"
 #include "SDL_windowevents_c.h"

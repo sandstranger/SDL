@@ -805,6 +805,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_HideCursor(void);
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_CursorVisible(void);
 
+// Get the mouse state structure
+extern SDL_DECLSPEC void SDLCALL *SDL_GetMouseVoid(void);
+
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 }

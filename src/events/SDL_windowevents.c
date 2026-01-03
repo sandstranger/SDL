@@ -24,7 +24,7 @@
 
 #include "SDL_events_c.h"
 #include "SDL_eventwatch_c.h"
-#include "SDL_mouse_c.h"
+#include "SDL3/SDL_mouse_c.h"
 #include "../tray/SDL_tray_utils.h"
 
 
