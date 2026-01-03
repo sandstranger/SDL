@@ -19,7 +19,6 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include <stdbool.h>
-#include "../SDL_internal.h"
 
 #ifndef SDL_mouse_c_h_
 #define SDL_mouse_c_h_

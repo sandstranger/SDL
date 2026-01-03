@@ -27,7 +27,7 @@
 #include "SDL_hints.h"
 #include "SDL_events.h"
 #include "SDL_androidtouch.h"
-#include "../../events/SDL_mouse_c.h"
+#include "SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../core/android/SDL_android.h"
 #include "uthash.h"

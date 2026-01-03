@@ -25,7 +25,7 @@
 #include "SDL_syswm.h"
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_keyboard_c.h"
-#include "../../events/SDL_mouse_c.h"
+#include "SDL_mouse_c.h"
 #include "../../events/SDL_windowevents_c.h"
 #include "../../core/android/SDL_android.h"
 
