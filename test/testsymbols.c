@@ -80,27 +80,3 @@ static void print_usage(const char *argv0)
 {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Usage: %s [number [number] ...]\n", argv0);
 }
-
-int main(int argc, char *argv[])
-{
-    static const int count_sdl_symbols = (int)SDL_arraysize(sdl_symbols) - 1;
-    int i;
-    int result = 0;
-    SDL_Log("There are %d SDL3 symbols", count_sdl_symbols);
-    for (i = 1; i < argc; i++) {
-        Sint64 symbol_index = -1;
-        char *endp = NULL;
-        symbol_index = (Sint64)SDL_strtol(argv[i], &endp, 10);
-        if (*endp != '\0') {
-            print_usage(argv[0]);
-            return 1;
-        }
-        if (symbol_index < 0 || symbol_index >= count_sdl_symbols) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Index %" SDL_PRIs64 " is out of range", symbol_index);
-            result = 1;
-            continue;
-        }
-        SDL_Log("Address of %s is %p", sdl_symbols[symbol_index].name, sdl_symbols[symbol_index].address);
-    }
-    return result;
-}

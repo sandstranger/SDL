@@ -559,6 +559,7 @@
 #define SDL_GetWindowICCProfile SDL_GetWindowICCProfile_REAL
 #define SDL_GetWindowID SDL_GetWindowID_REAL
 #define SDL_GetMouseVoid SDL_GetMouseVoid_REAL
+#define SDL_GetRelativeMouseMode SDL_GetRelativeMouseMode_REAL
 #define SDL_GetWindowKeyboardGrab SDL_GetWindowKeyboardGrab_REAL
 #define SDL_GetWindowMaximumSize SDL_GetWindowMaximumSize_REAL
 #define SDL_GetWindowMinimumSize SDL_GetWindowMinimumSize_REAL
