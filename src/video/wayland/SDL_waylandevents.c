@@ -53,14 +53,18 @@
 #include <libdecor.h>
 #endif
 
+// Per the spec, Wayland mouse and stylus buttons are defined as Linux event codes.
 #ifdef SDL_INPUT_LINUXEV
 #include <linux/input.h>
 #else
-#define BTN_LEFT   (0x110)
-#define BTN_RIGHT  (0x111)
-#define BTN_MIDDLE (0x112)
-#define BTN_SIDE   (0x113)
-#define BTN_EXTRA  (0x114)
+#define BTN_LEFT    (0x110)
+#define BTN_RIGHT   (0x111)
+#define BTN_MIDDLE  (0x112)
+#define BTN_SIDE    (0x113)
+#define BTN_EXTRA   (0x114)
+#define BTN_STYLUS  (0x14b)
+#define BTN_STYLUS2 (0x14c)
+#define BTN_STYLUS3 (0x149)
 #endif
 #include "../../events/SDL_keysym_to_scancode_c.h"
 #include "../../events/imKStoUCS.h"
@@ -871,7 +875,7 @@ static void pointer_handle_leave(void *data, struct wl_pointer *pointer,
 
     SDL_WaylandSeat *seat = (SDL_WaylandSeat *)data;
     seat->pointer.focus = NULL;
-    for (int i = 0; seat->pointer.buttons_pressed; ++i) {
+    for (int i = 1; seat->pointer.buttons_pressed; ++i) {
         if (seat->pointer.buttons_pressed & SDL_BUTTON_MASK(i)) {
             SDL_SendMouseButton(0, window->sdlwindow, seat->pointer.sdl_id, i, false);
             seat->pointer.buttons_pressed &= ~SDL_BUTTON_MASK(i);
@@ -1187,19 +1191,21 @@ static void pointer_handle_axis_relative_direction(void *data, struct wl_pointer
 static void pointer_dispatch_relative_motion(SDL_WaylandSeat *seat)
 {
     SDL_WindowData *window = seat->pointer.focus;
-    SDL_Mouse *mouse = SDL_GetMouse();
 
-    double dx;
-    double dy;
-    if (mouse->InputTransform || !mouse->enable_relative_system_scale) {
-        dx = wl_fixed_to_double(seat->pointer.pending_frame.relative.dx_unaccel);
-        dy = wl_fixed_to_double(seat->pointer.pending_frame.relative.dy_unaccel);
-    } else {
-        dx = wl_fixed_to_double(seat->pointer.pending_frame.relative.dx) * window->pointer_scale.x;
-        dy = wl_fixed_to_double(seat->pointer.pending_frame.relative.dy) * window->pointer_scale.y;
+    if (window) {
+        SDL_Mouse *mouse = SDL_GetMouse();
+        double dx;
+        double dy;
+        if (mouse->InputTransform || !mouse->enable_relative_system_scale) {
+            dx = wl_fixed_to_double(seat->pointer.pending_frame.relative.dx_unaccel);
+            dy = wl_fixed_to_double(seat->pointer.pending_frame.relative.dy_unaccel);
+        } else {
+            dx = wl_fixed_to_double(seat->pointer.pending_frame.relative.dx) * window->pointer_scale.x;
+            dy = wl_fixed_to_double(seat->pointer.pending_frame.relative.dy) * window->pointer_scale.y;
+        }
+
+        SDL_SendMouseMotion(seat->pointer.pending_frame.timestamp_ns, window->sdlwindow, seat->pointer.sdl_id, true, (float)dx, (float)dy);
     }
-
-    SDL_SendMouseMotion(seat->pointer.pending_frame.timestamp_ns, window->sdlwindow, seat->pointer.sdl_id, true, (float)dx, (float)dy);
 }
 
 static void pointer_dispatch_axis(SDL_WaylandSeat *seat)
@@ -3381,14 +3387,13 @@ static void tablet_tool_handle_button(void *data, struct zwp_tablet_tool_v2 *too
     int sdlbutton;
 
     switch (button) {
-    // see %{_includedir}/linux/input-event-codes.h
-    case 0x14b: // BTN_STYLUS
+    case BTN_STYLUS:
         sdlbutton = 1;
         break;
-    case 0x14c: // BTN_STYLUS2
+    case BTN_STYLUS2:
         sdlbutton = 2;
         break;
-    case 0x149: // BTN_STYLUS3
+    case BTN_STYLUS3:
         sdlbutton = 3;
         break;
     default:
