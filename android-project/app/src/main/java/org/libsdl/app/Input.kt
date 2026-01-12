@@ -12,7 +12,7 @@ import android.os.Build
 private const val ESCAPE_KEYCODE = 4
 const val INPUT_DELAY_MILLIS : Long = 50
 
-private val inputCoroutineScope = CoroutineScope(Dispatchers.Default)
+private val inputCoroutineScope = CoroutineScope(Dispatchers.Main)
 
 fun onKeyDown(keyCode: Int,startDelayMS : Long = 0, delayBeforeKeyRelease : Long = 0,
               repeatCount : Int = 1) {
