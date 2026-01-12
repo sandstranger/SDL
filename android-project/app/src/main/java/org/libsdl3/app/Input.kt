@@ -2,6 +2,7 @@
 
 package org.libsdl3.app
 
+import android.os.Build
 import android.view.KeyEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,7 @@ fun onKeyDown(keyCode: Int,startDelayMS : Long = 0, delayBeforeKeyRelease : Long
 }
 
 internal fun onEscapeBtnClicked (keyCode : Int, event : KeyEvent) {
-    if (event.action == KeyEvent.ACTION_DOWN && keyCode == ESCAPE_KEYCODE) {
+    if (event.action == KeyEvent.ACTION_DOWN && keyCode == ESCAPE_KEYCODE && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         onKeyDown(KeyEvent.KEYCODE_ESCAPE, delayBeforeKeyRelease = INPUT_DELAY_MILLIS)
     }
 }
