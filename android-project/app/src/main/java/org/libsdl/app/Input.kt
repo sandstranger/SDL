@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.os.Build
 
 private const val ESCAPE_KEYCODE = 4
 const val INPUT_DELAY_MILLIS : Long = 50
@@ -26,7 +27,7 @@ fun onKeyDown(keyCode: Int,startDelayMS : Long = 0, delayBeforeKeyRelease : Long
 }
 
 internal fun onEscapeBtnClicked (keyCode : Int, event : KeyEvent) {
-    if (event.action == KeyEvent.ACTION_DOWN && keyCode == ESCAPE_KEYCODE) {
+    if (event.action == KeyEvent.ACTION_DOWN && keyCode == ESCAPE_KEYCODE && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         onKeyDown(KeyEvent.KEYCODE_ESCAPE, delayBeforeKeyRelease = INPUT_DELAY_MILLIS)
     }
 }
