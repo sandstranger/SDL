@@ -4730,20 +4730,31 @@ bool SDL_GL_LoadLibrary(const char *path)
     }
     return result;
 }
-#if ANDROID
 static void *openGLHandle = NULL;
-#endif
+char *pathToGLDriver = NULL;
+
+__attribute__((used))
+void SetSDLVideoGLDriver (char * pathToGLDriverToSet){
+    if (pathToGLDriver) {
+        free(pathToGLDriver);
+        pathToGLDriver = NULL;
+    }
+
+    if (pathToGLDriverToSet) {
+        pathToGLDriver = strdup(pathToGLDriverToSet);
+    }
+}
 
 SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
 {
-#if ANDROID
+    if (pathToGLDriver || openGLHandle) {
+        if (openGLHandle == NULL) {
+            openGLHandle = SDL_LoadObject(pathToGLDriver);
+        }
 
-    if (openGLHandle == NULL) {
-        openGLHandle = SDL_LoadObject(SDL_getenv("SDL_VIDEO_GL_DRIVER"));
+        return SDL_LoadFunction(openGLHandle, proc);
     }
 
-    return SDL_LoadFunction(openGLHandle, proc);
-#else
     SDL_FunctionPointer func;
 
     if (!_this) {
@@ -4761,7 +4772,6 @@ SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
         SDL_SetError("No dynamic GL support in current SDL video driver (%s)", _this->name);
     }
     return func;
-#endif
 }
 
 SDL_FunctionPointer SDL_EGL_GetProcAddress(const char *proc)

@@ -207,6 +207,7 @@
 #define SDL_GL_GetAttribute SDL_GL_GetAttribute_REAL
 #define SDL_GL_GetCurrentContext SDL_GL_GetCurrentContext_REAL
 #define SDL_GL_GetCurrentWindow SDL_GL_GetCurrentWindow_REAL
+#define SetSDLVideoGLDriver SetSDLVideoGLDriver_REAL
 #define SDL_GL_GetProcAddress SDL_GL_GetProcAddress_REAL
 #define SDL_GL_GetSwapInterval SDL_GL_GetSwapInterval_REAL
 #define SDL_GL_LoadLibrary SDL_GL_LoadLibrary_REAL
