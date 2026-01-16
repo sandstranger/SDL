@@ -291,7 +291,7 @@ void SDL_EGL_UnloadLibrary(_THIS)
     }
 }
 
-static char *pathToGLDriver = NULL;
+char *pathToGLDriver = NULL;
 
 __attribute__((used))
 void SetSDLVideoGLDriver (char * pathToGLDriverToSet){

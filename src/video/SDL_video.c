@@ -3507,15 +3507,15 @@ int SDL_GL_LoadLibrary(const char *path)
 }
 
 static void * handle = NULL;
+extern char *pathToGLDriver;
 
 void *SDL_GL_GetProcAddress(const char *proc)
 {
     static char procname[1024];
     void *retval;
 
-    if (handle == NULL){
-
-        handle = SDL_LoadObject (SDL_getenv("SDL_VIDEO_GL_DRIVER"));
+    if (handle == NULL && pathToGLDriver){
+        handle = SDL_LoadObject (pathToGLDriver);
     }
 
     retval = SDL_LoadFunction(handle, proc);
