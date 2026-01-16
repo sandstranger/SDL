@@ -556,9 +556,6 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode)
     }
 #if defined(__ANDROID__)
 #ifdef HAVE_STDIO_H
-    const char* forcedPath = getenv("FORCE_FILE_PATH");
-    /* Try to open the file on the filesystem first */
-    if (*file == '/' || (forcedPath && strcmp(forcedPath, "true") == 0)) {
         FILE *fp = fopen(file, mode);
         if (fp) {
             if (!IsRegularFileOrPipe(fp)) {
@@ -568,28 +565,6 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode)
             }
             return SDL_RWFromFP(fp, 1);
         }
-    } else {
-        /* Try opening it from internal storage if it's a relative path */
-        char *path;
-        FILE *fp;
-
-        /* !!! FIXME: why not just "char path[PATH_MAX];" ? */
-        path = SDL_stack_alloc(char, PATH_MAX);
-        if (path) {
-            SDL_snprintf(path, PATH_MAX, "%s/%s",
-                         SDL_AndroidGetInternalStoragePath(), file);
-            fp = fopen(path, mode);
-            SDL_stack_free(path);
-            if (fp) {
-                if (!IsRegularFileOrPipe(fp)) {
-                    fclose(fp);
-                    SDL_SetError("%s is not a regular file or pipe", path);
-                    return NULL;
-                }
-                return SDL_RWFromFP(fp, 1);
-            }
-        }
-    }
 #endif /* HAVE_STDIO_H */
 
     /* Try to open the file from the asset system */
