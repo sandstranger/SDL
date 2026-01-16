@@ -4731,7 +4731,7 @@ bool SDL_GL_LoadLibrary(const char *path)
     return result;
 }
 static void *openGLHandle = NULL;
-char *pathToGLDriver = NULL;
+static char *pathToGLDriver = NULL;
 
 __attribute__((used))
 void SetSDLVideoGLDriver (char * pathToGLDriverToSet){
