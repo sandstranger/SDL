@@ -295,7 +295,14 @@ static char *pathToGLDriver = NULL;
 
 __attribute__((used))
 void SetSDLVideoGLDriver (char * pathToGLDriverToSet){
-    pathToGLDriver = pathToGLDriverToSet;
+    if (pathToGLDriver) {
+        free(pathToGLDriver);
+        pathToGLDriver = NULL;
+    }
+
+    if (pathToGLDriverToSet) {
+        pathToGLDriver = strdup(pathToGLDriverToSet);
+    }
 }
 
 static int SDL_EGL_LoadLibraryInternal(_THIS, const char *egl_path)
