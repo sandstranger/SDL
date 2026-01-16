@@ -4734,7 +4734,7 @@ static void *openGLHandle = NULL;
 static char *pathToGLDriver = NULL;
 
 __attribute__((used))
-void SetSDLVideoGLDriver (char * pathToGLDriverToSet){
+void SetSDLVideoGLDriver (const char *pathToGLDriverToSet){
     if (pathToGLDriver) {
         free(pathToGLDriver);
         pathToGLDriver = NULL;

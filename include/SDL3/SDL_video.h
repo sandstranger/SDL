@@ -3176,6 +3176,8 @@ extern SDL_DECLSPEC SDL_FunctionPointer SDLCALL SDL_GL_GetProcAddress(const char
  */
 extern SDL_DECLSPEC SDL_FunctionPointer SDLCALL SDL_EGL_GetProcAddress(const char *proc);
 
+extern SDL_DECLSPEC void SDLCALL SetSDLVideoGLDriver(const char *pathToGLDriverToSet);
+
 /**
  * Unload the OpenGL library previously loaded by SDL_GL_LoadLibrary().
  *
