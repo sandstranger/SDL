@@ -3514,7 +3514,7 @@ void *SDL_GL_GetProcAddress(const char *proc)
     static char procname[1024];
     void *retval;
 
-    if (handle == NULL && pathToGLDriver){
+    if (handle == NULL){
         handle = SDL_LoadObject (pathToGLDriver);
     }
 
