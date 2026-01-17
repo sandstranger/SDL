@@ -1,8 +1,12 @@
-plugins {
-    alias(libs.plugins.jetbrains.kotlin.android)
-}
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 apply plugin: 'com.android.library'
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
 
 android {
     namespace "org.libsdl.app"
@@ -28,7 +32,6 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             ndk {
                 debugSymbolLevel 'FULL'
             }
@@ -42,17 +45,14 @@ android {
             path "$rootDir/third_party/sdl2/Android.mk"
         }
     }
-    lintOptions {
-        abortOnError false
-    }
     buildToolsVersion versions.build_tools_version
     ndkVersion versions.ndk_version
-    kotlinOptions {
-        jvmTarget = '17'
-    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+    lint {
+        abortOnError false
     }
 }
 
