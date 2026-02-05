@@ -1266,6 +1266,8 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_GUID guid)
                 // Apex 5 has additional shoulder macro buttons
                 SDL_strlcat(mapping_string, "misc2:b15,misc3:b16,", sizeof(mapping_string));
             }
+        } else if (SDL_IsJoystickGameSirController(vendor, product)) {
+            SDL_strlcat(mapping_string, "paddle1:b11,paddle2:b12,paddle3:b13,paddle4:b14,misc2:b15,misc3:b16,", sizeof(mapping_string));
         } else if (vendor == USB_VENDOR_8BITDO && product == USB_PRODUCT_8BITDO_ULTIMATE2_WIRELESS) {
             SDL_strlcat(mapping_string, "paddle1:b12,paddle2:b11,paddle3:b14,paddle4:b13,", sizeof(mapping_string));
         } else {
@@ -2360,14 +2362,25 @@ static GamepadMapping_t *SDL_PrivateGetGamepadMapping(SDL_JoystickID instance_id
     return mapping;
 }
 
+static bool SDL_PrivateIsGamepadPlatformMatch(const char *platform, size_t platform_len)
+{
+#ifdef SDL_PLATFORM_MACOS
+    // We also accept the older SDL2 platform name for macOS
+    if (SDL_strncasecmp(platform, "Mac OS X", platform_len) == 0) {
+        return true;
+    }
+#endif
+
+    return SDL_strncasecmp(platform, SDL_GetPlatform(), platform_len) == 0;
+}
+
 /*
  * Add or update an entry into the Mappings Database
  */
 int SDL_AddGamepadMappingsFromIO(SDL_IOStream *src, bool closeio)
 {
-    const char *platform = SDL_GetPlatform();
     int gamepads = 0;
-    char *buf, *line, *line_end, *tmp, *comma, line_platform[64];
+    char *buf, *line, *line_end, *tmp, *comma, *platform;
     size_t db_size;
     size_t platform_len;
 
@@ -2396,13 +2409,11 @@ int SDL_AddGamepadMappingsFromIO(SDL_IOStream *src, bool closeio)
             tmp += SDL_GAMEPAD_PLATFORM_FIELD_SIZE;
             comma = SDL_strchr(tmp, ',');
             if (comma) {
-                platform_len = comma - tmp + 1;
-                if (platform_len + 1 < SDL_arraysize(line_platform)) {
-                    SDL_strlcpy(line_platform, tmp, platform_len);
-                    if (SDL_strncasecmp(line_platform, platform, platform_len) == 0 &&
-                        SDL_AddGamepadMapping(line) > 0) {
-                        gamepads++;
-                    }
+                platform = tmp;
+                platform_len = comma - platform;
+                if (SDL_PrivateIsGamepadPlatformMatch(platform, platform_len) &&
+                    SDL_AddGamepadMapping(line) > 0) {
+                    gamepads++;
                 }
             }
         }

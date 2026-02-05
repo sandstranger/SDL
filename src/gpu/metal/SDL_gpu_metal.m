@@ -26,12 +26,18 @@
 #include <Metal/Metal.h>
 #include <QuartzCore/CoreAnimation.h>
 
+#ifdef HAVE_GPU_OPENXR
+#define XR_USE_GRAPHICS_API_METAL 1
+#include "../xr/SDL_openxr_internal.h"
+#include "../xr/SDL_openxrdyn.h"
+#endif
+
 #include "../SDL_sysgpu.h"
 
 // Defines
 
 #define METAL_FIRST_VERTEX_BUFFER_SLOT 14
-#define WINDOW_PROPERTY_DATA           "SDL_GPUMetalWindowPropertyData"
+#define WINDOW_PROPERTY_DATA           "SDL.internal.gpu.metal.data"
 #define SDL_GPU_SHADERSTAGE_COMPUTE    2
 
 #define TRACK_RESOURCE(resource, type, array, count, capacity)   \
@@ -423,6 +429,8 @@ static MTLDepthClipMode SDLToMetal_DepthClipMode(
 
 // Structs
 
+typedef struct MetalRenderer MetalRenderer;
+
 typedef struct MetalTexture
 {
     id<MTLTexture> handle;
@@ -452,6 +460,8 @@ typedef struct MetalFence
 typedef struct MetalWindowData
 {
     SDL_Window *window;
+    MetalRenderer *renderer;
+    int refcount;
     SDL_MetalView view;
     CAMetalLayer *layer;
     SDL_GPUPresentMode presentMode;
@@ -522,8 +532,6 @@ typedef struct MetalUniformBuffer
     Uint32 writeOffset;
     Uint32 drawOffset;
 } MetalUniformBuffer;
-
-typedef struct MetalRenderer MetalRenderer;
 
 typedef struct MetalCommandBuffer
 {
@@ -3645,7 +3653,7 @@ static bool METAL_SupportsSwapchainComposition(
 }
 
 // This function assumes that it's called from within an autorelease pool
-static Uint8 METAL_INTERNAL_CreateSwapchain(
+static bool METAL_INTERNAL_CreateSwapchain(
     MetalRenderer *renderer,
     MetalWindowData *windowData,
     SDL_GPUSwapchainComposition swapchainComposition,
@@ -3717,7 +3725,7 @@ static Uint8 METAL_INTERNAL_CreateSwapchain(
     windowData->textureContainer.header.info.width = (Uint32)drawableSize.width;
     windowData->textureContainer.header.info.height = (Uint32)drawableSize.height;
 
-    return 1;
+    return true;
 }
 
 static bool METAL_SupportsPresentMode(
@@ -3747,6 +3755,8 @@ static bool METAL_ClaimWindow(
         if (windowData == NULL) {
             windowData = (MetalWindowData *)SDL_calloc(1, sizeof(MetalWindowData));
             windowData->window = window;
+            windowData->renderer = renderer;
+            windowData->refcount = 1;
 
             if (METAL_INTERNAL_CreateSwapchain(renderer, windowData, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC)) {
                 SDL_SetPointerProperty(SDL_GetWindowProperties(window), WINDOW_PROPERTY_DATA, windowData);
@@ -3767,10 +3777,13 @@ static bool METAL_ClaimWindow(
                 return true;
             } else {
                 SDL_free(windowData);
-                SET_STRING_ERROR_AND_RETURN("Could not create swapchain, failed to claim window", false);
+                return false;
             }
+        } else if (windowData->renderer == renderer) {
+            ++windowData->refcount;
+            return true;
         } else {
-            SET_ERROR_AND_RETURN("%s", "Window already claimed!", false);
+            SET_STRING_ERROR_AND_RETURN("Window already claimed", false);
         }
     }
 }
@@ -3784,7 +3797,15 @@ static void METAL_ReleaseWindow(
         MetalWindowData *windowData = METAL_INTERNAL_FetchWindowData(window);
 
         if (windowData == NULL) {
-            SET_STRING_ERROR_AND_RETURN("Window is not claimed by this SDL_GPUDevice", );
+            return;
+        }
+        if (windowData->renderer != renderer) {
+            SDL_SetError("Window not claimed by this device");
+            return;
+        }
+        if (windowData->refcount > 1) {
+            --windowData->refcount;
+            return;
         }
 
         METAL_Wait(driverData);
@@ -4322,6 +4343,10 @@ static bool METAL_SupportsTextureFormat(
 
 static bool METAL_PrepareDriver(SDL_VideoDevice *this, SDL_PropertiesID props)
 {
+    if (SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_XR_ENABLE_BOOLEAN, false)) {
+        return false;
+    }
+
     if (!SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, false) &&
         !SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_METALLIB_BOOLEAN, false)) {
         return false;
@@ -4482,6 +4507,45 @@ static void METAL_INTERNAL_DestroyBlitResources(
         METAL_ReleaseGraphicsPipeline(driverData, renderer->blitPipelines[i].pipeline);
     }
     SDL_free(renderer->blitPipelines);
+}
+
+static XrResult METAL_DestroyXRSwapchain(
+    SDL_GPURenderer *driverData,
+    XrSwapchain swapchain,
+    SDL_GPUTexture **swapchainImages)
+{
+    SDL_SetError("The metal backend does not currently support OpenXR");
+    return XR_ERROR_FUNCTION_UNSUPPORTED;
+}
+
+static SDL_GPUTextureFormat* METAL_GetXRSwapchainFormats(
+    SDL_GPURenderer *driverData,
+    XrSession session,
+    int *num_formats)
+{
+    SDL_SetError("The metal backend does not currently support OpenXR");
+    return NULL;
+}
+
+static XrResult METAL_CreateXRSwapchain(
+    SDL_GPURenderer *driverData,
+    XrSession session,
+    const XrSwapchainCreateInfo *oldCreateInfo,
+    SDL_GPUTextureFormat format,
+    XrSwapchain *swapchain,
+    SDL_GPUTexture ***textures)
+{
+    SDL_SetError("The metal backend does not currently support OpenXR");
+    return XR_ERROR_FUNCTION_UNSUPPORTED;
+}
+
+static XrResult METAL_CreateXRSession(
+    SDL_GPURenderer *driverData,
+    const XrSessionCreateInfo *createinfo,
+    XrSession *session)
+{
+    SDL_SetError("The metal backend does not currently support OpenXR");
+    return XR_ERROR_FUNCTION_UNSUPPORTED;
 }
 
 static SDL_GPUDevice *METAL_CreateDevice(bool debugMode, bool preferLowPower, SDL_PropertiesID props)

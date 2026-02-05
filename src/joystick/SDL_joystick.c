@@ -653,6 +653,15 @@ void SDL_LockJoysticks(void)
     ++SDL_joysticks_locked;
 }
 
+bool SDL_TryLockJoysticks(void)
+{
+    if (SDL_TryLockMutex(SDL_joystick_lock)) {
+        ++SDL_joysticks_locked;
+        return true;
+    }
+    return false;
+}
+
 void SDL_UnlockJoysticks(void)
 {
     bool last_unlock = false;
@@ -3303,6 +3312,16 @@ bool SDL_IsJoystickFlydigiController(Uint16 vendor_id, Uint16 product_id)
         }
     }
     return false;
+}
+
+bool SDL_IsJoystickGameSirController(Uint16 vendor_id, Uint16 product_id)
+{
+    if (vendor_id != USB_VENDOR_GAMESIR) {
+        return false;
+    }
+
+    return (product_id == USB_PRODUCT_GAMESIR_GAMEPAD_G7_PRO_HID ||
+            product_id == USB_PRODUCT_GAMESIR_GAMEPAD_G7_PRO_8K_HID);
 }
 
 bool SDL_IsJoystickSteamDeck(Uint16 vendor_id, Uint16 product_id)

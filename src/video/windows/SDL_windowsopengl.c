@@ -659,9 +659,9 @@ static bool WIN_GL_SetupWindowInternal(SDL_VideoDevice *_this, SDL_Window *windo
         *iAttr++ = WGL_TYPE_RGBA_FLOAT_ARB;
     }
 
-    if (_this->gl_data->HAS_WGL_ARB_framebuffer_sRGB) {
+    if (_this->gl_data->HAS_WGL_ARB_framebuffer_sRGB && _this->gl_config.framebuffer_srgb_capable) {
         *iAttr++ = WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB;
-        *iAttr++ = (_this->gl_config.framebuffer_srgb_capable > 0) ? GL_TRUE : GL_FALSE;
+        *iAttr++ = GL_TRUE;
     }
 
     /* We always choose either FULL or NO accel on Windows, because of flaky
