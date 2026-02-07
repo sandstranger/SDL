@@ -699,4 +699,3 @@ class SDLHapticHandler {
         return null;
     }
 }
-
