@@ -3525,7 +3525,10 @@ void *SDL_GL_GetProcAddress(const char *proc)
             SDL_strlcpy(procname + 1, proc, 1022);
             retval = SDL_LoadFunction(handle, procname);
         }
-        return retval;
+
+        if (retval != NULL){
+            return retval;
+        }
     }
 
     void *func;
