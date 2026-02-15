@@ -32,9 +32,6 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            ndk {
-                debugSymbolLevel 'FULL'
-            }
         }
         debug {
             jniDebuggable true
