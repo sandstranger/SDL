@@ -4743,7 +4743,11 @@ SDL_FunctionPointer SDL_GL_GetProcAddress(const char *proc)
             openGLHandle = SDL_LoadObject(pathToGLDriver);
         }
 
-        return SDL_LoadFunction(openGLHandle, proc);
+        SDL_FunctionPointer pointer = SDL_LoadFunction(openGLHandle, proc);
+
+        if (pointer != NULL){
+            return pointer;
+        }
     }
 
     SDL_FunctionPointer func;
