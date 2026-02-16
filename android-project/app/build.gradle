@@ -32,6 +32,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
         }
         debug {
             jniDebuggable true
