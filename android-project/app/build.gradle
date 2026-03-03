@@ -33,7 +33,7 @@ android {
         release {
             minifyEnabled false
             ndk {
-                debugSymbolLevel 'SYMBOL_TABLE'
+                debugSymbolLevel 'FULL'
             }
         }
         debug {
