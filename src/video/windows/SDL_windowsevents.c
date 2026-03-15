@@ -497,6 +497,9 @@ WIN_KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
     case VK_RCONTROL:
         scanCode = SDL_SCANCODE_RCTRL;
         break;
+    case VK_SNAPSHOT:
+        scanCode = SDL_SCANCODE_PRINTSCREEN;
+        break;
 
     // These are required to intercept Alt+Tab and Alt+Esc on Windows 7
     case VK_TAB:
@@ -774,7 +777,8 @@ static void WIN_HandleRawKeyboardInput(Uint64 timestamp, SDL_VideoData *data, HA
 
     if (down) {
         SDL_Window *focus = SDL_GetKeyboardFocus();
-        if (!focus || focus->text_input_active) {
+        // With input sink flag we want to receive input even if not focused
+        if ((!data->raw_keyboard_flag_inputsink && !focus) || (focus && focus->text_input_active)) {
             return;
         }
     }
