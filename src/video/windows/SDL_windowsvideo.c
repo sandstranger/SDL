@@ -673,6 +673,7 @@ void WIN_VideoQuit(SDL_VideoDevice *_this)
 
     WIN_SetRawMouseEnabled(_this, false);
     WIN_SetRawKeyboardEnabled(_this, false);
+    WIN_SetRawInputEnabled(_this, 0);
     WIN_QuitGameInput(_this);
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
