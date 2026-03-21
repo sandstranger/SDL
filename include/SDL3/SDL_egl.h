@@ -2350,6 +2350,8 @@ EGLAPI struct wl_buffer *EGLAPIENTRY eglCreateWaylandBufferFromImageWL (EGLDispl
 }
 #endif
 
+extern SDL_DECLSPEC void SDLCALL UpdateEnableAngleState(const bool enableAngle);
+
 #endif /* __eglext_h_ */
 
 #endif /* _MSC_VER */

@@ -82,6 +82,10 @@
 #define DEFAULT_OGL_ES_PVR "libGLES_CM.so"
 #define DEFAULT_OGL_ES     "libGLESv1_CM.so"
 
+#define EGL_ANGLE          "libEGL_angle.so"
+#define OGL_ES2_ANGLE      "libGLESv2_angle.so"
+#define OGL_ES_ANGLE       "libGLESv1_CM_angle"
+
 #elif defined(SDL_VIDEO_DRIVER_WINDOWS)
 // EGL AND OpenGL ES support via ANGLE
 #define DEFAULT_EGL        "libEGL.dll"
@@ -174,6 +178,10 @@ typedef void (APIENTRY* PFNGLGETINTEGERVPROC) (GLenum pname, GLint * params);
 #define LOAD_FUNC_EGLEXT(TYPE, NAME) \
     _this->egl_data->NAME = (TYPE)_this->egl_data->eglGetProcAddress(#NAME);
 
+#if ANDROID
+static bool g_enableAngle = false;
+#endif
+
 static const char *SDL_EGL_GetErrorName(EGLint eglErrorCode)
 {
 #define SDL_EGL_ERROR_TRANSLATE(e) \
@@ -198,6 +206,13 @@ static const char *SDL_EGL_GetErrorName(EGLint eglErrorCode)
     }
     return "";
 }
+
+#if ANDROID
+__attribute__((used)) __attribute__((visibility("default")))
+void UpdateEnableAngleState (const bool enableAngle){
+    g_enableAngle = enableAngle;
+}
+#endif
 
 bool SDL_EGL_SetErrorEx(const char *message, const char *eglFunctionName, EGLint eglErrorCode)
 {
@@ -391,7 +406,11 @@ static bool SDL_EGL_LoadLibraryInternal(SDL_VideoDevice *_this, const char *egl_
             if (_this->gl_config.major_version > 1) {
 #ifdef DEFAULT_OGL_ES2
                 if (!opengl_dll_handle) {
+#ifndef ANDROID
                     path = DEFAULT_OGL_ES2;
+#else
+                    path = g_enableAngle ? OGL_ES2_ANGLE : DEFAULT_OGL_ES2;
+#endif
                     opengl_dll_handle = SDL_LoadObject(path);
                 }
 #endif
@@ -404,13 +423,21 @@ static bool SDL_EGL_LoadLibraryInternal(SDL_VideoDevice *_this, const char *egl_
             } else {
 #ifdef DEFAULT_OGL_ES
                 if (!opengl_dll_handle) {
+#ifndef ANDROID
                     path = DEFAULT_OGL_ES;
+#else
+                    path = g_enableAngle ? OGL_ES_ANGLE : DEFAULT_OGL_ES;
+#endif
                     opengl_dll_handle = SDL_LoadObject(path);
                 }
 #endif
 #ifdef DEFAULT_OGL_ES_PVR
                 if (!opengl_dll_handle) {
+#ifndef ANDROID
                     path = DEFAULT_OGL_ES_PVR;
+#else
+                    path = g_enableAngle ? OGL_ES_ANGLE : DEFAULT_OGL_ES_PVR;
+#endif
                     opengl_dll_handle = SDL_LoadObject(path);
                 }
 #endif
@@ -453,7 +480,11 @@ static bool SDL_EGL_LoadLibraryInternal(SDL_VideoDevice *_this, const char *egl_
         }
         path = SDL_GetHint(SDL_HINT_EGL_LIBRARY);
         if (!path) {
+#ifndef ANDROID
             path = DEFAULT_EGL;
+#else
+            path = g_enableAngle ? EGL_ANGLE : DEFAULT_EGL;
+#endif
         }
         egl_dll_handle = SDL_LoadObject(path);
 
