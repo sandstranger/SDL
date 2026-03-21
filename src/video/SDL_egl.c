@@ -141,7 +141,7 @@ static bool g_enableAngle = false;
 
 #if ANDROID
 __attribute__((used)) __attribute__((visibility("default")))
-void UpdateEnableAngleState (bool enableAngle){
+void UpdateEnableAngleState (const bool enableAngle){
     g_enableAngle = enableAngle;
 }
 #endif
