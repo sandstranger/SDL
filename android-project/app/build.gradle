@@ -12,7 +12,7 @@ android {
     namespace "org.libsdl.app"
     compileSdk {
         version = release(versions.target_sdk) {
-            minorApiLevel = 0
+            minorApiLevel = versions.target_sdk_min_revision
         }
     }
     defaultConfig {
