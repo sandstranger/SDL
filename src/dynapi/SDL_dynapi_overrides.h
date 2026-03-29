@@ -1316,3 +1316,4 @@
 #define SDL_SetGPURenderStateStorageBuffers SDL_SetGPURenderStateStorageBuffers_REAL
 #define SDL_GDKSuspendRenderer SDL_GDKSuspendRenderer_REAL
 #define SDL_GDKResumeRenderer SDL_GDKResumeRenderer_REAL
+#define SDL_IsPhone SDL_IsPhone_REAL
