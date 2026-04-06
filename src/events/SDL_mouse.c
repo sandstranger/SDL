@@ -825,14 +825,6 @@ static void SDL_PrivateSendMouseMotion(Uint64 timestamp, SDL_Window *window, SDL
             mouseID = SDL_GLOBAL_MOUSE_ID;
         }
 
-        if (!relative && window_is_relative) {
-            if (!mouse->relative_mode_warp_motion) {
-                return;
-            }
-            xrel = 0.0f;
-            yrel = 0.0f;
-        }
-
         SDL_Event event;
         event.type = SDL_EVENT_MOUSE_MOTION;
         event.common.timestamp = timestamp;
