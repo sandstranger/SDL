@@ -267,7 +267,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         if (mWidth <= 1) {
             return 0.5f;
         } else {
-            return (x / (mWidth - 1));
+            return (x / (fixedWidth - 1));
         }
     }
 
@@ -276,7 +276,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         if (mHeight <= 1) {
             return 0.5f;
         } else {
-            return (y / (mHeight - 1));
+            return (y / (fixedHeight - 1));
         }
     }
 
