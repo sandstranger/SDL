@@ -58,7 +58,19 @@ typedef struct CFbsBitmap CFbsBitmap;
 typedef struct NGAGE_TextureData
 {
     CFbsBitmap *bitmap;
-    SDL_Surface *surface;
+
+    // Cached properties to avoid repeated API calls.
+    int cachedWidth;
+    int cachedHeight;
+    int cachedPitch;
+    void *cachedDataAddress;
+
+    // Cardinal rotation cache (0°, 90°, 180°, 270°) - created on demand.
+    CFbsBitmap *cardinalRotations[4];
+
+    // Dirty tracking to avoid redundant rendering.
+    bool isDirty;
+    SDL_Rect dirtyRect;
 
 } NGAGE_TextureData;
 
@@ -89,6 +101,10 @@ bool NGAGE_Copy(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Rect *srcrect,
 bool NGAGE_CopyEx(SDL_Renderer *renderer, SDL_Texture *texture, NGAGE_CopyExData *copydata);
 bool NGAGE_CreateTextureData(NGAGE_TextureData *data, const int width, const int height);
 void NGAGE_DestroyTextureData(NGAGE_TextureData *data);
+void *NGAGE_GetBitmapDataAddress(NGAGE_TextureData *data);
+int NGAGE_GetBitmapPitch(NGAGE_TextureData *data);
+int NGAGE_GetBitmapWidth(NGAGE_TextureData *data);
+int NGAGE_GetBitmapHeight(NGAGE_TextureData *data);
 void NGAGE_DrawLines(NGAGE_Vertex *verts, const int count);
 void NGAGE_DrawPoints(NGAGE_Vertex *verts, const int count);
 void NGAGE_FillRects(NGAGE_Vertex *verts, const int count);
