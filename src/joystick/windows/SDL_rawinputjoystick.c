@@ -37,6 +37,7 @@
 #include "../SDL_sysjoystick.h"
 #include "../../core/windows/SDL_windows.h"
 #include "../../core/windows/SDL_hid.h"
+#include "../../core/windows/SDL_gameinput.h"
 #include "../hidapi/SDL_hidapijoystick_c.h"
 
 /* SDL_JOYSTICK_RAWINPUT_XINPUT is disabled because using XInput at the same time as
@@ -1022,7 +1023,8 @@ static bool RAWINPUT_JoystickInit(void)
 {
     SDL_assert(!SDL_RAWINPUT_inited);
 
-    if (!SDL_GetHintBoolean(SDL_HINT_JOYSTICK_RAWINPUT, false)) {
+    if (!SDL_GetHintBoolean(SDL_HINT_JOYSTICK_RAWINPUT, false) ||
+        SDL_UsingGameInputForXInputControllers()) {
         return true;
     }
 
