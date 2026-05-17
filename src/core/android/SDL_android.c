@@ -1888,7 +1888,9 @@ typedef struct APKNode
 {
     char *name;
     SDL_PathInfo info;
+    struct APKNode *parent;
     struct APKNode *children;
+    struct APKNode *children_tail;
     struct APKNode *next_sibling;
 } APKNode;
 
@@ -1906,6 +1908,12 @@ static void FreeAPKNode(APKNode *node)
 
 static APKNode *FindAPKChildNode(APKNode *parent, const char *child)
 {
+    if ((child[0] == '.') && (child[1] == '\0')) {  // "." paths just return the current dir.
+        return parent;
+    } else if ((child[0] == '.') && (child[1] == '.') && (child[2] == '\0')) {  // ".." paths return the parent dir (or the current dir if at the root).
+        return parent->parent ? parent->parent : parent;
+    }
+
     for (APKNode *node = parent->children; node != NULL; node = node->next_sibling) {
         if (SDL_strcmp(child, node->name) == 0) {
             return node;
@@ -1917,6 +1925,7 @@ static APKNode *FindAPKChildNode(APKNode *parent, const char *child)
 static const APKNode *FindAPKNode(const char *constpath)
 {
     //SDL_Log("FindAPKNode('%s') ...", constpath);
+
     if (SDL_strncmp(constpath, "assets://", 9) == 0) {
         constpath += 9;
     }
@@ -1989,8 +1998,13 @@ static APKNode *AddAPKChildNode(APKNode *parent, const char *child)
 
         SDL_copyp(&node->info, &parent->info);  // you probably need to update this afterwards.
 
-        node->next_sibling = parent->children;
-        parent->children = node;
+        node->parent = parent;
+        if (parent->children_tail) {  // APKs tend to be sorted alphabetically, so insert new nodes at the end of the list to maintain this order.
+            parent->children_tail->next_sibling = node;
+        } else {
+            parent->children = node;
+        }
+        parent->children_tail = node;
     }
     return node;
 }
@@ -2019,6 +2033,12 @@ static APKNode *AddAPKDirs(char *path, APKNode *parent)
             break;  // last thing is either an empty string (we ended with a '/'), or an actual file's name, so drop it.
         }
 
+        if ((path[0] == '.') && ((path[1] == '\0') || ((path[1] == '.') ||(path[2] == '\0')))) {
+            // whoa, there's a "." or ".." subdir in a zip entry's path? Fail!
+            SDL_SetError("bogus file path in APK file entry");
+            return NULL;
+        }
+
         *ptr = '\0';  // terminate on the end of this subdir's name.
         APKNode *node = AddAPKChildNode(parent, path);
         *ptr = '/';
@@ -2037,27 +2057,30 @@ static APKNode *AddAPKDirs(char *path, APKNode *parent)
 
 static SDL_Time ZipDosTimeToSDLTime(Uint32 dostime)
 {
-    Uint32 dosdate;
-    struct tm unixtime;
-    SDL_zero(unixtime);
+    // Note that DOS-style datetimes in a zip don't have timezone info, etc,
+    // so these are treated as UTC for lack of a better option. Also, they have
+    // 2-second precision and the year bits are going to roll over in 2108.
+    // There are possibly better timestamps in extended fields (!!! FIXME: add
+    // support for those), but this field is guaranteed to exist with all its
+    // flaws and is probably Good Enough anyhow.
+    const Uint32 dosdate = (Uint32) ((dostime >> 16) & 0xFFFF);
+    const Uint32 dostime16 = dostime & 0xFFFF;
 
-    dosdate = (Uint32) ((dostime >> 16) & 0xFFFF);
-    dostime &= 0xFFFF;
+    const int m = (int) ((dosdate >> 5) & 0x0F);
+    const int d = (int) ((dosdate >> 0) & 0x1F) + 1;
+    const int y = (int) (((dosdate >> 9) & 0x7F) + 1980) - (m <= 2 ? 1 : 0);
+    const int hour   = (int) ((dostime16 >> 11) & 0x1F);
+    const int minute = (int) ((dostime16 >>  5) & 0x3F);
+    const int sec    = (int) ((dostime16 <<  1) & 0x3E);
 
-    /* dissect date */
-    unixtime.tm_year = ((dosdate >> 9) & 0x7F) + 80;
-    unixtime.tm_mon  = ((dosdate >> 5) & 0x0F) - 1;
-    unixtime.tm_mday = ((dosdate     ) & 0x1F);
-
-    /* dissect time */
-    unixtime.tm_hour = ((dostime >> 11) & 0x1F);
-    unixtime.tm_min  = ((dostime >>  5) & 0x3F);
-    unixtime.tm_sec  = ((dostime <<  1) & 0x3E);
-
-    /* let mktime calculate daylight savings time. */
-    unixtime.tm_isdst = -1;
-
-    return ((SDL_Time) mktime(&unixtime));
+    // days since 1/1/1970: https://howardhinnant.github.io/date_algorithms.html#days_from_civil
+    const int era = ((y >= 0) ? y : (y - 399)) / 400;
+    const unsigned int yoe = (unsigned int) (y - era * 400);      // [0, 399]
+    const unsigned int doy = (((153 * ((m > 2) ? (m - 3) : (m + 9))) + 2) / 5) + (d - 1);  // [0, 365]
+    const unsigned int doe = (yoe * 365) + (yoe / 4) - (yoe / 100) + doy;         // [0, 146096]
+    const int days = (era * 146097) + ((int) doe) - 719468;
+    const int seconds = (hour * (60 * 60)) + (minute * 60) + (sec);
+    return (SDL_Time) (((Sint64) days) * 86400) + seconds;
 }
 
 
