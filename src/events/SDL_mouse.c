@@ -1481,6 +1481,11 @@ bool SDL_GetRelativeMouseMode(void)
     return mouse->relative_mode;
 }
 
+bool SDL_GetRelativeMouseMode_Android(void)
+{
+    return SDL_GetRelativeMouseMode();    
+}
+
 bool SDL_UpdateRelativeMouseMode(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();

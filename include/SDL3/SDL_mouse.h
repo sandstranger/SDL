@@ -804,7 +804,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_ShowCursor(void);
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_HideCursor(void);
 
-extern SDL_DECLSPEC bool SDLCALL SDL_GetRelativeMouseMode(void);
+extern SDL_DECLSPEC bool SDLCALL SDL_GetRelativeMouseMode_Android(void);
 
 /**
  * Return whether the cursor is currently being shown.
