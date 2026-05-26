@@ -696,13 +696,6 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
 endif()
 
 if(MSVC)
-  sdl_compile_definitions(
-    PRIVATE
-      "_CRT_SECURE_NO_DEPRECATE"
-      "_CRT_NONSTDC_NO_DEPRECATE"
-      "_CRT_SECURE_NO_WARNINGS"
-  )
-
   # CET support was added in VS 2019 16.7
   if(MSVC_VERSION GREATER 1926 AND CMAKE_GENERATOR_PLATFORM MATCHES "Win32|x64")
     # Mark SDL3.dll as compatible with Control-flow Enforcement Technology (CET)
@@ -941,6 +934,10 @@ if(SDL_ASSEMBLY)
           return 0;
         }]==] COMPILER_SUPPORTS_ARMSVE2)
       if(COMPILER_SUPPORTS_ARMSVE2)
+        # IMPORTANT: As not all AArch64 processors support SVE2, we only
+        #            attach the following compilation option to SVE 
+        #            dedicated source files.
+        set(SVE2_MARCH_FLAG "-march=armv8-a+sve2")
         set(HAVE_ARMSVE2 TRUE)
       endif()
     cmake_pop_check_state()
@@ -954,6 +951,7 @@ if(SDL_ASSEMBLY)
         "${SDL3_SOURCE_DIR}/src/video/arm/SDL_sve2_blit_A.c"
         "${SDL3_SOURCE_DIR}/src/video/arm/SDL_sve2_blit_N.c"
         PROPERTIES
+          COMPILE_FLAGS "${SVE2_MARCH_FLAG}"
           SKIP_PRECOMPILE_HEADERS ON
       )
     endif()
@@ -1139,8 +1137,8 @@ if(SDL_LIBC)
     _Exit exp expf
     fabs fabsf floor floorf fmod fmodf fopen64 fseeko fseeko64
     getenv
-    _i64toa _i64toa_s index itoa _itoa_s
-    log log10 log10f logf lround lroundf _ltoa _ltoa_s
+    _i64toa index itoa
+    log log10 log10f logf lround lroundf _ltoa
     malloc memcmp memcpy memmove memset modf modff
     pow powf putenv
     rindex round roundf
@@ -1154,7 +1152,7 @@ if(SDL_LIBC)
   )
   if(WINDOWS OR CYGWIN)
     list(APPEND symbols_to_check
-      _copysign _fseeki64 _strrev _ui64toa _ui64toa_s _uitoa _ultoa _ultoa_s _wcsdup
+      _copysign _fseeki64 _strrev _ui64toa _ultoa _wcsdup
     )
   else()
     list(APPEND symbols_to_check
@@ -1622,6 +1620,7 @@ if(ANDROID)
       set(SDL_VIDEO_OPENGL_EGL 1)
       set(HAVE_OPENGLES TRUE)
       set(SDL_VIDEO_OPENGL_ES 1)
+      set(SDL_VIDEO_RENDER_OGL_ES 1)
       set(SDL_VIDEO_OPENGL_ES2 1)
       set(SDL_VIDEO_RENDER_OGL_ES2 1)
 
@@ -2736,6 +2735,7 @@ elseif(APPLE)
       if(IOS OR TVOS OR VISIONOS OR WATCHOS)
         set(SDL_FRAMEWORK_OPENGLES 1)
         set(SDL_VIDEO_OPENGL_ES 1)
+        set(SDL_VIDEO_RENDER_OGL_ES 1)
       else()
         set(SDL_VIDEO_OPENGL_EGL 1)
       endif()
