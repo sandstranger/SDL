@@ -67,7 +67,9 @@ import org.libsdl3.app.SDLGenericMotionListener_API29;
 public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVisibilityChangeListener {
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
+    private static int sdlInputCounter = 0;
 
+    public static boolean isSDl2Activity = false;
     public static boolean useStandardSDLInput = false;
     protected boolean gameResourcesFound = true;
     private static final int SDL_MINOR_VERSION = 5;
@@ -565,7 +567,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         if (mHIDDeviceManager != null) {
             mHIDDeviceManager.setFrozen(true);
-        }        
+        }
 
         if (!mHasMultiWindow) {
             pauseNativeThread();
@@ -583,7 +585,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         if (mHIDDeviceManager != null) {
             mHIDDeviceManager.setFrozen(false);
-        }        
+        }
 
         if (!mHasMultiWindow) {
             resumeNativeThread();
@@ -662,7 +664,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         if (hasFocus || !SDLActivity.nativeGetHintBoolean("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", false)) {
             if (mHIDDeviceManager != null) {
                 mHIDDeviceManager.setFrozen(!hasFocus);
-            }            
+            }
         }
 
         if (SDLActivity.mBrokenLibraries) {
@@ -1469,7 +1471,13 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
                 onNativeScreenKeyboardShown();
             }*/
 
-            if (useStandardSDLInput) {
+            final int targetSDLInputCounter = 2;
+
+            if (useStandardSDLInput && isSDl2Activity && sdlInputCounter < targetSDLInputCounter){
+                sdlInputCounter ++;
+            }
+
+            if (useStandardSDLInput && (sdlInputCounter >= targetSDLInputCounter || !isSDl2Activity)) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
                 builder.setTitle("Virtual input");
 
