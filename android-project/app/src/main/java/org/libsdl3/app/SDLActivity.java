@@ -67,9 +67,7 @@ import org.libsdl3.app.SDLGenericMotionListener_API29;
 public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVisibilityChangeListener {
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
-    private static int sdlInputCounter = 0;
 
-    public static boolean isSDl2Activity = false;
     public static boolean useStandardSDLInput = false;
     protected boolean gameResourcesFound = true;
     private static final int SDL_MINOR_VERSION = 5;
@@ -1430,7 +1428,6 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         public int x, y, w, h;
 
         public ShowTextInputTask(int input_type, int x, int y, int w, int h) {
-            this.input_type = input_type;
             this.x = x;
             this.y = y;
             this.w = w;
@@ -1447,61 +1444,29 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         @Override
         public void run() {
-           /* RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
-            params.leftMargin = x;
-            params.topMargin = y;
+            if (useStandardSDLInput) {
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
+                params.leftMargin = x;
+                params.topMargin = y;
 
-            if (mTextEdit == null) {
-                mTextEdit = new SDLDummyEdit(getContext());
+                if (mTextEdit == null) {
+                    mTextEdit = new SDLDummyEdit(getContext());
 
-                mLayout.addView(mTextEdit, params);
-            } else {
-                mTextEdit.setLayoutParams(params);
-            }
-            mTextEdit.setInputType(input_type);
+                    mLayout.addView(mTextEdit, params);
+                } else {
+                    mTextEdit.setLayoutParams(params);
+                }
+                mTextEdit.setInputType(input_type);
 
-            mTextEdit.setVisibility(View.VISIBLE);
-            mTextEdit.requestFocus();
+                mTextEdit.setVisibility(View.VISIBLE);
+                mTextEdit.requestFocus();
 
-            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.showSoftInput(mTextEdit, 0);
+                InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.showSoftInput(mTextEdit, 0);
 
-            if (imm.isAcceptingText()) {
-                onNativeScreenKeyboardShown();
-            }*/
-
-            final int targetSDLInputCounter = 2;
-
-            if (useStandardSDLInput && isSDl2Activity && sdlInputCounter < targetSDLInputCounter){
-                sdlInputCounter ++;
-            }
-
-            if (useStandardSDLInput && (sdlInputCounter >= targetSDLInputCounter || !isSDl2Activity)) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-                builder.setTitle("Virtual input");
-
-                builder.setOnCancelListener(dialog -> {
-                    onNativeScreenKeyboardHidden();
-                });
-
-                builder.setOnDismissListener(dialog -> {
-                    onNativeScreenKeyboardHidden();
-                });
-
-                final EditText input = new EditText(getContext());
-                builder.setView(input);
-
-                builder.setPositiveButton("OK", (dialog, which) -> {
-                    String text = input.getText().toString();
-                    SDLInputConnection.nativeCommitText(text, 0);
-                    Input.onKeyDown(KeyEvent.KEYCODE_ENTER, 200, Input.INPUT_DELAY_MILLIS, 1);
-                });
-                builder.setNegativeButton("Cancel", (dialog, which) -> {
-                    dialog.cancel();
-                });
-
-                onNativeScreenKeyboardShown();
-                builder.show();
+                if (imm.isAcceptingText()) {
+                    onNativeScreenKeyboardShown();
+                }
             }
         }
     }
@@ -1510,6 +1475,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
      * This method is called by SDL using JNI.
      */
     public static boolean showTextInput(int input_type, int x, int y, int w, int h) {
+        if (x <=0 && y<=0 && w<=0 && h<=0){
+            return false;
+        }
         // Transfer the task to the main thread as a Runnable
         return mSingleton.commandHandler.post(new ShowTextInputTask(input_type, x, y, w, h));
     }
