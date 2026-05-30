@@ -1103,7 +1103,6 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
                                             int action, float x,
                                             float y, float p, boolean invokePressEvents);
     public static native void onNativePen(int penId, int device_type, int button, int action, float x, float y, float p);
-    public static native void onNativeAccel(float x, float y, float z);
     public static native void onNativeClipboardChanged();
     public static native void onNativeSurfaceCreated();
     public static native void onNativeSurfaceChanged();
