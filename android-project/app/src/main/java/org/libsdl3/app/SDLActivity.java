@@ -476,6 +476,8 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         mSingleton = this;
         SDL.setContext(this);
 
+        SDLControllerManager.initializeDeviceListener();
+
         mClipboardHandler = new SDLClipboardHandler();
 
         mHIDDeviceManager = HIDDeviceManager.acquire(this);
