@@ -1497,9 +1497,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     public static boolean handleKeyEvent(View v, int keyCode, KeyEvent event, InputConnection ic) {
         int deviceId = event.getDeviceId();
         int source = event.getSource();
+        InputDevice device = InputDevice.getDevice(deviceId);
 
         if (source == InputDevice.SOURCE_UNKNOWN) {
-            InputDevice device = InputDevice.getDevice(deviceId);
             if (device != null) {
                 source = device.getSources();
             }
@@ -1518,7 +1518,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
         // Furthermore, it's possible a game controller has SOURCE_KEYBOARD and
         // SOURCE_JOYSTICK, while its key events arrive from the keyboard source
         // So, retrieve the device itself and check all of its sources
-        if (SDLControllerManager.isDeviceSDLJoystick(deviceId)) {
+        if (SDLControllerManager.isDeviceSDLJoystick(device)) {
             // Note that we process events with specific key codes here
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (SDLControllerManager.onNativePadDown(deviceId, keyCode, event.getScanCode())) {
