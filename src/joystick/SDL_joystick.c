@@ -494,6 +494,7 @@ static Uint32 initial_gamecube_devices[] = {
     MAKE_VIDPID(0x0079, 0x1846), // DragonRise GameCube Controller Adapter
     MAKE_VIDPID(0x057e, 0x0337), // Nintendo Wii U GameCube Controller Adapter
     MAKE_VIDPID(0x057e, 0x2073), // Nintendo Switch 2 NSO GameCube Controller
+    MAKE_VIDPID(0x05e3, 0x0681), // Austgame GameCube to USB convertor
     MAKE_VIDPID(0x0926, 0x8888), // Cyber Gadget GameCube Controller
     MAKE_VIDPID(0x0e6f, 0x0185), // PDP Wired Fight Pad Pro for Nintendo Switch
     MAKE_VIDPID(0x1a34, 0xf705), // GameCube {HuiJia USB box}
@@ -3086,6 +3087,8 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
     } else if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_SWITCH_JOYCON_GRIP) {
         if (name && SDL_strstr(name, "(L)") != NULL) {
             type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT;
+        } else if (name && SDL_strstr(name, "L+R") != NULL) {
+            type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR;
         } else {
             type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT;
         }

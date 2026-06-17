@@ -433,6 +433,7 @@ static AAssetManager *asset_manager = NULL;
 static jobject javaAssetManagerRef = 0;
 
 static SDL_Mutex *Android_ActivityMutex = NULL;
+static int Android_ActivityMutexCount = 0;
 static SDL_Mutex *Android_LifecycleMutex = NULL;
 static SDL_Semaphore *Android_LifecycleEventSem = NULL;
 static SDL_AndroidLifecycleEvent Android_LifecycleEvents[SDL_NUM_ANDROID_LIFECYCLE_EVENTS];
@@ -1002,6 +1003,15 @@ bool Android_WaitLifecycleEvent(SDL_AndroidLifecycleEvent *event, Sint64 timeout
 {
     bool got_event = false;
 
+    int relock_count = 0;
+    Android_LockActivityMutex();
+    while (Android_ActivityMutexCount > 1) {
+        // We came into this function with the activity lock held, we need to unlock so lifecycle events can be dispatched
+        ++relock_count;
+        Android_UnlockActivityMutex();
+    }
+    Android_UnlockActivityMutex();
+
     while (!got_event && SDL_WaitSemaphoreTimeoutNS(Android_LifecycleEventSem, timeoutNS)) {
         SDL_LockMutex(Android_LifecycleMutex);
         {
@@ -1013,16 +1023,23 @@ bool Android_WaitLifecycleEvent(SDL_AndroidLifecycleEvent *event, Sint64 timeout
         }
         SDL_UnlockMutex(Android_LifecycleMutex);
     }
+
+    while (relock_count > 0) {
+        Android_LockActivityMutex();
+        --relock_count;
+    }
     return got_event;
 }
 
 void Android_LockActivityMutex(void)
 {
     SDL_LockMutex(Android_ActivityMutex);
+    ++Android_ActivityMutexCount;
 }
 
 void Android_UnlockActivityMutex(void)
 {
+    --Android_ActivityMutexCount;
     SDL_UnlockMutex(Android_ActivityMutex);
 }
 
@@ -3201,12 +3218,12 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativePermissionResult)(
     JNIEnv *env, jclass cls,
     jint requestCode, jboolean result)
 {
-    SDL_LockMutex(Android_ActivityMutex);
+    SDL_LockMutex(SDL_event_lock);
     NativePermissionRequestInfo *prev = &pending_permissions;
     for (NativePermissionRequestInfo *info = prev->next; info != NULL; info = info->next) {
         if (info->request_code == (int) requestCode) {
             prev->next = info->next;
-            SDL_UnlockMutex(Android_ActivityMutex);
+            SDL_UnlockMutex(SDL_event_lock);
             info->callback(info->userdata, info->permission, result ? true : false);
             SDL_free(info->permission);
             SDL_free(info);
@@ -3215,7 +3232,7 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativePermissionResult)(
         prev = info;
     }
 
-    SDL_UnlockMutex(Android_ActivityMutex);
+    SDL_UnlockMutex(SDL_event_lock);
 }
 
 bool SDL_RequestAndroidPermission(const char *permission, SDL_RequestAndroidPermissionCallback cb, void *userdata)
@@ -3243,10 +3260,10 @@ bool SDL_RequestAndroidPermission(const char *permission, SDL_RequestAndroidPerm
     info->callback = cb;
     info->userdata = userdata;
 
-    SDL_LockMutex(Android_ActivityMutex);
+    SDL_LockMutex(SDL_event_lock);
     info->next = pending_permissions.next;
     pending_permissions.next = info;
-    SDL_UnlockMutex(Android_ActivityMutex);
+    SDL_UnlockMutex(SDL_event_lock);
 
     JNIEnv *env = Android_JNI_GetEnv();
     jstring jpermission = (*env)->NewStringUTF(env, permission);
