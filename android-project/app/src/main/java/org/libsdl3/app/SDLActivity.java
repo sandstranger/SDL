@@ -39,6 +39,8 @@ import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
@@ -1122,9 +1124,9 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     public static native boolean nativeAllowRecreateActivity();
     public static native int nativeCheckSDLThreadCounter();
     public static native void onNativeFileDialog(int requestCode, String[] filelist, int filter);
-    public static native void onNativePinchStart();
-    public static native void onNativePinchUpdate(float scale);
-    public static native void onNativePinchEnd();
+    public static native void onNativePinchStart(float span_x, float span_y, float focus_x, float focus_y);
+    public static native void onNativePinchUpdate(float scale, float span_x, float span_y, float focus_x, float focus_y);
+    public static native void onNativePinchEnd(float span_x, float span_y, float focus_x, float focus_y);
 
     /**
      * This method is called by SDL using JNI.
@@ -1323,6 +1325,25 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             return true;
         }
         return false;
+    }
+
+    /**
+     * This method is called by SDL using JNI.
+     */
+    static String getDeviceFormFactor()
+    {
+        // TODO: WearOS
+        if (isAndroidTV()) {
+            return "tv";
+        } else if (isVRHeadset()) {
+            return "headset";
+        } else if (isTablet()) {
+            return "tablet";
+        //} else if (isAndroidAutomotive()) {
+        //    return "car";
+        } else {
+            return "phone";
+        }
     }
 
     public static double getDiagonal()
@@ -2201,6 +2222,19 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
 
         if (initialPathUri != null) {
             intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialPathUri);
+        }
+
+        /* Handle a suggested filename when saving */
+        if (type == SDL_FILEDIALOG_SAVEFILE && initialPath != null && !initialPath.isEmpty() &&
+            !initialPath.endsWith("/") && !initialPath.endsWith("\\")) {
+            String title = initialPath;
+            int lastSeparator = Math.max(title.lastIndexOf('/'), title.lastIndexOf('\\'));
+            if (lastSeparator >= 0) {
+                title = title.substring(lastSeparator + 1);
+            }
+            if (!title.isEmpty()) {
+                intent.putExtra(Intent.EXTRA_TITLE, title);
+            }
         }
 
         /* Display the file/folder dialog */
