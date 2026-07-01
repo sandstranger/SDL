@@ -351,6 +351,10 @@ typedef struct
         float fGyroScaleX;
         float fGyroScaleY;
         float fGyroScaleZ;
+
+        Sint16 sGyroOffsetX;
+        Sint16 sGyroOffsetY;
+        Sint16 sGyroOffsetZ;
     } m_IMUScaleData;
 } SDL_DriverSwitch_Context;
 
@@ -1113,17 +1117,26 @@ static bool LoadIMUCalibration(SDL_DriverSwitch_Context *ctx)
         // Check for user calibration data. If it's present and set, it'll override the factory settings
         readParams.unAddress = k_unSPIIMUUserScaleStartOffset;
         readParams.ucLength = k_unSPIIMUUserScaleLength;
-        if (WriteSubcommand(ctx, k_eSwitchSubcommandIDs_SPIFlashRead, (uint8_t *)&readParams, sizeof(readParams), &reply) && (pIMUScale[0] | pIMUScale[1] << 8) == 0xA1B2) {
-            pIMUScale = reply->spiReadData.rgucReadData;
+        if (WriteSubcommand(ctx, k_eSwitchSubcommandIDs_SPIFlashRead, (uint8_t *)&readParams, sizeof(readParams), &reply)) {
+            Uint8 *pUserIMUScale = reply->spiReadData.rgucReadData;
 
-            sAccelRawX = (pIMUScale[3] << 8) | pIMUScale[2];
-            sAccelRawY = (pIMUScale[5] << 8) | pIMUScale[4];
-            sAccelRawZ = (pIMUScale[7] << 8) | pIMUScale[6];
+            if ((pUserIMUScale[0] | (pUserIMUScale[1] << 8)) == 0xA1B2) {
+                pIMUScale = pUserIMUScale;
 
-            sGyroRawX = (pIMUScale[15] << 8) | pIMUScale[14];
-            sGyroRawY = (pIMUScale[17] << 8) | pIMUScale[16];
-            sGyroRawZ = (pIMUScale[19] << 8) | pIMUScale[18];
+                sAccelRawX = (pIMUScale[3] << 8) | pIMUScale[2];
+                sAccelRawY = (pIMUScale[5] << 8) | pIMUScale[4];
+                sAccelRawZ = (pIMUScale[7] << 8) | pIMUScale[6];
+
+                sGyroRawX = (pIMUScale[15] << 8) | pIMUScale[14];
+                sGyroRawY = (pIMUScale[17] << 8) | pIMUScale[16];
+                sGyroRawZ = (pIMUScale[19] << 8) | pIMUScale[18];
+            }
         }
+
+        // Gyro zero-rate offset
+        ctx->m_IMUScaleData.sGyroOffsetX = sGyroRawX;
+        ctx->m_IMUScaleData.sGyroOffsetY = sGyroRawY;
+        ctx->m_IMUScaleData.sGyroOffsetZ = sGyroRawZ;
 
         // Accelerometer scale
         ctx->m_IMUScaleData.fAccelScaleX = SWITCH_ACCEL_SCALE_MULT / ((float)sAccelSensCoeffX - (float)sAccelRawX) * SDL_STANDARD_GRAVITY;
@@ -1147,6 +1160,10 @@ static bool LoadIMUCalibration(SDL_DriverSwitch_Context *ctx)
         ctx->m_IMUScaleData.fGyroScaleX = gyroScale;
         ctx->m_IMUScaleData.fGyroScaleY = gyroScale;
         ctx->m_IMUScaleData.fGyroScaleZ = gyroScale;
+
+        ctx->m_IMUScaleData.sGyroOffsetX = 0;
+        ctx->m_IMUScaleData.sGyroOffsetY = 0;
+        ctx->m_IMUScaleData.sGyroOffsetZ = 0;
     }
     return true;
 }
@@ -2362,9 +2379,13 @@ static void SendSensorUpdate(Uint64 timestamp, SDL_Joystick *joystick, SDL_Drive
      * users will want consistent axis mappings across devices.
      */
     if (type == SDL_SENSOR_GYRO || type == SDL_SENSOR_GYRO_L || type == SDL_SENSOR_GYRO_R) {
-        data[0] = -(ctx->m_IMUScaleData.fGyroScaleY * (float)values[1]);
-        data[1] = ctx->m_IMUScaleData.fGyroScaleZ * (float)values[2];
-        data[2] = -(ctx->m_IMUScaleData.fGyroScaleX * (float)values[0]);
+        const float gyroX = (float)(values[0] - ctx->m_IMUScaleData.sGyroOffsetX);
+        const float gyroY = (float)(values[1] - ctx->m_IMUScaleData.sGyroOffsetY);
+        const float gyroZ = (float)(values[2] - ctx->m_IMUScaleData.sGyroOffsetZ);
+
+        data[0] = -(ctx->m_IMUScaleData.fGyroScaleY * gyroY);
+        data[1] = ctx->m_IMUScaleData.fGyroScaleZ * gyroZ;
+        data[2] = -(ctx->m_IMUScaleData.fGyroScaleX * gyroX);
     } else {
         data[0] = -(ctx->m_IMUScaleData.fAccelScaleY * (float)values[1]);
         data[1] = ctx->m_IMUScaleData.fAccelScaleZ * (float)values[2];

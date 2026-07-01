@@ -49,6 +49,8 @@
 #include "frog-color-management-v1-client-protocol.h"
 #include "xdg-toplevel-icon-v1-client-protocol.h"
 #include "color-management-v1-client-protocol.h"
+#include "xdg-session-management-v1-client-protocol.h"
+#include "xdg-toplevel-tag-v1-client-protocol.h"
 
 #ifdef HAVE_LIBDECOR_H
 #include <libdecor.h>
@@ -2050,6 +2052,64 @@ bool Wayland_SetWindowModal(SDL_VideoDevice *_this, SDL_Window *window, bool mod
     return true;
 }
 
+static void Wayland_RegisterToplevelForSession(SDL_WindowData *data)
+{
+    struct xdg_toplevel *toplevel = GetToplevelForWindow(data);
+    if (!toplevel) {
+        return;
+    }
+
+    const char *id = SDL_GetStringProperty(data->sdlwindow->props, SDL_PROP_WINDOW_WAYLAND_WINDOW_ID_STRING, NULL);
+    if (id && *id != '\0') {
+        SDL_VideoDevice *viddev = SDL_GetVideoDevice();
+        SDL_VideoData *viddata = viddev->internal;
+
+        if (viddata->xdg_toplevel_tag_manager) {
+            xdg_toplevel_tag_manager_v1_set_toplevel_tag(viddata->xdg_toplevel_tag_manager, toplevel, id);
+        }
+
+        if (viddata->xdg_session_manager) {
+            Wayland_CreateSession(viddata);
+
+            if (viddata->xdg_session) {
+                CHECK_PARAM (true) {
+                    // Windows added to a session must not have a duplicate ID string, or a protocol error will result.
+                    for (SDL_Window *w = viddev->windows; w; w = w->next) {
+                        SDL_WindowData *d = w->internal;
+                        if (d->session_id && SDL_strcmp(d->session_id, id) == 0) {
+                            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Duplicate window ID string %s found; window will not be added to session", id);
+                            return;
+                        }
+                    }
+                }
+
+                data->xdg_toplevel_session = xdg_session_v1_restore_toplevel(viddata->xdg_session, toplevel, id);
+                data->session_id = SDL_strdup(id);
+            }
+        }
+    }
+}
+
+static void Wayland_DestroyToplevelSession(SDL_WindowData *data)
+{
+    SDL_VideoData *viddata = data->waylandData;
+
+    if (data->xdg_toplevel_session) {
+        const char *id = SDL_GetStringProperty(data->sdlwindow->props, SDL_PROP_WINDOW_WAYLAND_WINDOW_ID_STRING, NULL);
+
+        // If the ID string was cleared, remove the window from the session.
+        if (!id || *id == '\0') {
+            xdg_session_v1_remove_toplevel(viddata->xdg_session, data->session_id);
+        }
+
+        xdg_toplevel_session_v1_destroy(data->xdg_toplevel_session);
+        data->xdg_toplevel_session = NULL;
+
+        SDL_free(data->session_id);
+        data->session_id = NULL;
+    }
+}
+
 static void show_hide_sync_handler(void *data, struct wl_callback *callback, uint32_t callback_data)
 {
     // Get the window from the ID as it may have been destroyed
@@ -2256,6 +2316,7 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
 
     // Restore state that was set prior to this call
+    Wayland_RegisterToplevelForSession(data);
     Wayland_SetWindowParent(_this, window, window->parent);
 
     if (window->flags & SDL_WINDOW_MODAL) {
@@ -2475,6 +2536,9 @@ void Wayland_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
     wl_surface_attach(wind->surface, NULL, 0, 0);
     wl_surface_commit(wind->surface);
+
+    // Need to destroy the session object after unmapping the window, or the state may not be saved.
+    Wayland_DestroyToplevelSession(wind);
 
     SDL_zero(wind->shell_surface);
     wind->show_hide_sync_required = true;
@@ -3108,6 +3172,12 @@ bool Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Proper
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, data->surface);
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_VIEWPORT_POINTER, data->viewport);
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_EGL_WINDOW_POINTER, data->egl_window);
+    if (data->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_XDG_TOPLEVEL || data->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_LIBDECOR) {
+        const char *window_id = SDL_GetStringProperty(create_props, SDL_PROP_WINDOW_CREATE_WAYLAND_WINDOW_ID_STRING, NULL);
+        if (window_id && *window_id != '\0') {
+            SDL_SetStringProperty(props, SDL_PROP_WINDOW_WAYLAND_WINDOW_ID_STRING, window_id);
+        }
+    }
 
     data->hit_test_result = SDL_HITTEST_NORMAL;
 
@@ -3303,8 +3373,8 @@ void Wayland_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
 
 static int icon_sort_callback(const void *a, const void *b)
 {
-    SDL_Surface *s1 = (SDL_Surface *)a;
-    SDL_Surface *s2 = (SDL_Surface *)b;
+    const SDL_Surface *s1 = *(const SDL_Surface **)a;
+    const SDL_Surface *s2 = *(const SDL_Surface **)b;
 
     return (s1->w * s1->h) <= (s2->w * s2->h) ? -1 : 1;
 }
