@@ -1146,7 +1146,7 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
                                                       repeats:TRUE
                                                         block:^(NSTimer *unusedTimer)
     {
-        SDL_OnWindowLiveResizeUpdate(_data.window);
+        SDL_OnWindowLiveResizeUpdate(self->_data.window);
     }];
 
     [[NSRunLoop currentRunLoop] addTimer:liveResizeTimer forMode:NSRunLoopCommonModes];
@@ -2241,7 +2241,7 @@ static void Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL
 }
 @end
 
-static void Cocoa_UpdateMouseFocus()
+static void Cocoa_UpdateMouseFocus(void)
 {
     const NSPoint mouseLocation = [NSEvent mouseLocation];
 

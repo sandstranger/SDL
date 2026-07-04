@@ -60,7 +60,7 @@ public class SDLControllerManager
             mJoystickHandler = new SDLJoystickHandler();
         }
 
-        if (mHapticHandler == null) {
+        if (mHapticHandler == null && SDL.isSubsystemCompiled(SDL.SDL_INIT_HAPTIC)) {
             if (Build.VERSION.SDK_INT >= 31 /* Android 12.0 (S) */) {
                 mHapticHandler = new SDLHapticHandler_API31();
             } else if (Build.VERSION.SDK_INT >= 26 /* Android 8.0 (O) */) {
@@ -90,7 +90,7 @@ public class SDLControllerManager
 
     // Joystick glue code, just a series of stubs that redirect to the SDLJoystickHandler instance
     static public boolean handleJoystickMotionEvent(MotionEvent event) {
-        return mJoystickHandler.handleMotionEvent(event);
+        return mJoystickHandler != null && mJoystickHandler.handleMotionEvent(event);
     }
 
     /**
@@ -118,21 +118,27 @@ public class SDLControllerManager
      * This method is called by SDL using JNI.
      */
     static void detectHapticDevices() {
-        mHapticHandler.detectHapticDevices();
+        if (mHapticHandler != null) {
+            mHapticHandler.detectHapticDevices();
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void hapticRun(int device_id, float intensity, int length) {
-        mHapticHandler.run(device_id, intensity, length);
+        if (mHapticHandler != null) {
+            mHapticHandler.run(device_id, intensity, length);
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void hapticRumble(int device_id, float low_frequency_intensity, float high_frequency_intensity, int length) {
-        mHapticHandler.rumble(device_id, low_frequency_intensity, high_frequency_intensity, length);
+        if (mHapticHandler != null) {
+            mHapticHandler.rumble(device_id, low_frequency_intensity, high_frequency_intensity, length);
+        }
     }
 
     /**
@@ -140,7 +146,9 @@ public class SDLControllerManager
      */
     static void hapticStop(int device_id)
     {
-        mHapticHandler.stop(device_id);
+        if (mHapticHandler != null) {
+            mHapticHandler.stop(device_id);
+        }
     }
 
     // Check if a given device is considered a possible SDL joystick

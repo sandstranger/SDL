@@ -238,10 +238,10 @@ static SDL_Cursor *Cocoa_CreateSystemCursor(SDL_SystemCursor id)
             nscursor = [NSCursor contextualMenuCursor];
             break;
         case SDL_SYSTEM_CURSOR_HELP:
-            nscursor = LoadHiddenSystemCursor(@"help", @selector(helpCursor));
+            nscursor = LoadHiddenSystemCursor(@"help", @selector(arrowCursor));
             break;
         case SDL_SYSTEM_CURSOR_CELL:
-            nscursor = LoadHiddenSystemCursor(@"cell", @selector(cellCursor));
+            nscursor = LoadHiddenSystemCursor(@"cell", @selector(arrowCursor));
             break;
         case SDL_SYSTEM_CURSOR_VERTICAL_TEXT:
             nscursor = [NSCursor IBeamCursorForVerticalLayout];
@@ -768,7 +768,7 @@ static void Cocoa_HandleTitleButtonEvent(SDL_VideoDevice *_this, NSEvent *event)
 
 static NSWindow *Cocoa_MouseFocus;
 
-NSWindow *Cocoa_GetMouseFocus()
+NSWindow *Cocoa_GetMouseFocus(void)
 {
     return Cocoa_MouseFocus;
 }

@@ -27,10 +27,13 @@ public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API
         }
 
         if (!SDLActivity.isDeXMode() || Build.VERSION.SDK_INT >= 27 /* Android 8.1 (O_MR1) */) {
-            if (enabled) {
-                SDLActivity.getContentView().requestPointerCapture();
-            } else {
-                SDLActivity.getContentView().releasePointerCapture();
+            View contentView = SDLActivity.getContentView();
+            if (contentView != null) {
+                if (enabled) {
+                    contentView.requestPointerCapture();
+                } else {
+                    contentView.releasePointerCapture();
+                }
             }
             mRelativeModeEnabled = enabled;
             return true;
@@ -48,7 +51,10 @@ public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API
         }
 
         if (mRelativeModeEnabled && !SDLActivity.isDeXMode()) {
-            SDLActivity.getContentView().requestPointerCapture();
+            View contentView = SDLActivity.getContentView();
+            if (contentView != null) {
+                contentView.requestPointerCapture();
+            }
         }
     }
 
