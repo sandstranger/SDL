@@ -3,6 +3,7 @@ package org.libsdl3.app;
 import android.os.Build;
 import android.view.InputDevice;
 import android.view.MotionEvent;
+import android.view.View;
 
 public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API24 {
     // Generic Motion (mouse hover, joystick...) events go here
