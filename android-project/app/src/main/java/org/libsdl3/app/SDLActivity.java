@@ -1162,7 +1162,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     public static native void onNativeFileDialog(int requestCode, String[] filelist, int filter);
     public static native void onNativePinchStart(float span_x, float span_y, float focus_x, float focus_y);
     public static native void onNativePinchUpdate(float scale, float span_x, float span_y, float focus_x, float focus_y);
-    public static native void onNativePinchEnd(float span_x, float span_y, float focus_x, float focus_y);
+    public static native void onNativePinchEnd();
 
     /**
      * This method is called by SDL using JNI.
