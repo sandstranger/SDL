@@ -640,7 +640,7 @@ connection_error:
     }
 }
 
-static void pointer_dispatch_absolute_motion(SDL_WaylandSeat *seat)
+static void pointer_dispatch_absolute_motion(SDL_WaylandSeat *seat, bool warp)
 {
     SDL_WindowData *window_data = seat->pointer.focus;
     SDL_Window *window = window_data ? window_data->sdlwindow : NULL;
@@ -656,7 +656,11 @@ static void pointer_dispatch_absolute_motion(SDL_WaylandSeat *seat)
 
         sx *= window_data->pointer_scale.x;
         sy *= window_data->pointer_scale.y;
-        SDL_SendMouseMotion(seat->pointer.pending_frame.timestamp_ns, window_data->sdlwindow, seat->pointer.sdl_id, false, (float)sx, (float)sy);
+        if (!warp) {
+            SDL_SendMouseMotion(seat->pointer.pending_frame.timestamp_ns, window_data->sdlwindow, seat->pointer.sdl_id, false, (float)sx, (float)sy);
+        } else {
+            SDL_SendMouseWarp(seat->pointer.pending_frame.timestamp_ns, window_data->sdlwindow, seat->pointer.sdl_id, (float)sx, (float)sy);
+        }
 
         seat->pointer.last_motion.x = (int)SDL_floor(sx);
         seat->pointer.last_motion.y = (int)SDL_floor(sy);
@@ -763,7 +767,7 @@ static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
         }
     } else {
         seat->pointer.pending_frame.timestamp_ns = timestamp;
-        pointer_dispatch_absolute_motion(seat);
+        pointer_dispatch_absolute_motion(seat, false);
     }
 }
 
@@ -790,7 +794,7 @@ static void pointer_dispatch_enter(SDL_WaylandSeat *seat)
     SDL_SetMouseFocus(window->sdlwindow);
 
     // Send the initial position.
-    pointer_dispatch_absolute_motion(seat);
+    pointer_dispatch_absolute_motion(seat, false);
 
     // Update the pointer grab state.
     Wayland_SeatUpdatePointerGrab(seat);
@@ -1280,7 +1284,7 @@ static void pointer_handle_frame(void *data, struct wl_pointer *pointer)
     }
 
     if (seat->pointer.pending_frame.have_absolute) {
-        pointer_dispatch_absolute_motion(seat);
+        pointer_dispatch_absolute_motion(seat, seat->pointer.pending_frame.have_warp);
     }
 
     if (seat->pointer.pending_frame.have_relative) {
@@ -1336,18 +1340,29 @@ static void pointer_handle_axis_value120(void *data, struct wl_pointer *pointer,
     pointer_handle_axis_common(seat, SDL_WAYLAND_AXIS_EVENT_VALUE120, axis, wl_fixed_from_int(value120));
 }
 
+static void pointer_handle_warp(void *data, struct wl_pointer *wl_pointer, wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+    SDL_WaylandSeat *seat = (SDL_WaylandSeat *)data;
+
+    seat->pointer.pending_frame.have_absolute = true;
+    seat->pointer.pending_frame.have_warp = true;
+    seat->pointer.pending_frame.absolute.sx = surface_x;
+    seat->pointer.pending_frame.absolute.sy = surface_y;
+}
+
 static const struct wl_pointer_listener pointer_listener = {
     pointer_handle_enter,
     pointer_handle_leave,
     pointer_handle_motion,
     pointer_handle_button,
     pointer_handle_axis,
-    pointer_handle_frame,                  // Version 5
-    pointer_handle_axis_source,            // Version 5
-    pointer_handle_axis_stop,              // Version 5
-    pointer_handle_axis_discrete,          // Version 5
-    pointer_handle_axis_value120,          // Version 8
-    pointer_handle_axis_relative_direction // Version 9
+    pointer_handle_frame,                   // Version 5
+    pointer_handle_axis_source,             // Version 5
+    pointer_handle_axis_stop,               // Version 5
+    pointer_handle_axis_discrete,           // Version 5
+    pointer_handle_axis_value120,           // Version 8
+    pointer_handle_axis_relative_direction, // Version 9
+    pointer_handle_warp                     // Version 11
 };
 
 static void relative_pointer_handle_relative_motion(void *data,
@@ -3050,12 +3065,14 @@ static void data_device_handle_selection(void *data, struct wl_data_device *wl_d
     SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                  ". In data_device_listener . data_device_handle_selection on data_offer 0x%08x",
                  (id ? WAYLAND_wl_proxy_get_id((struct wl_proxy *)id) : -1));
-    if (data_device->selection_offer != offer) {
-        Wayland_data_offer_destroy(data_device->selection_offer);
-        data_device->selection_offer = offer;
-    }
 
-    Wayland_data_offer_notify_from_mimes(offer, true);
+    // Don't notify when clearing the old selection offer if doing so will inadvertently clear the selection source.
+    const bool notify = offer || (!offer && data_device->selection_offer && (!data_device->selection_offer->callback || !data_device->selection_source));
+    Wayland_data_offer_destroy(data_device->selection_offer);
+    data_device->selection_offer = offer;
+    if (notify) {
+        Wayland_data_offer_notify_from_mimes(offer, true);
+    }
 }
 
 static const struct wl_data_device_listener data_device_listener = {
