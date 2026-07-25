@@ -4215,6 +4215,15 @@ if(SDL_SHARED)
       "$<BUILD_INTERFACE:${SDL3_SOURCE_DIR}/src>"
   )
   target_link_libraries(SDL3-shared PUBLIC $<TARGET_NAME:SDL3::Headers>)
+
+  if (DEFINED CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(SAFFAL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../SAFFAL/saffal/build/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/${ANDROID_ABI}/libsaffal.so")
+  else ()
+    set(SAFFAL_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/../SAFFAL/saffal/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib/${ANDROID_ABI}/libsaffal.so")
+  endif ()
+
+  target_link_libraries(SDL3-shared PUBLIC ${SAFFAL_LIBRARY})
+
   if(MINGW OR CYGWIN)
     target_link_options(SDL3-shared PRIVATE -static-libgcc)
   endif()
