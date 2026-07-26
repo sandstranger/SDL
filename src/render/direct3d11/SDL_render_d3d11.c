@@ -2282,18 +2282,27 @@ static void D3D11_SetupShaderConstants(SDL_Renderer *renderer, const SDL_RenderC
     }
 }
 
+static bool PQShaderScalesInput(const D3D11_PixelShaderConstants *shader_constants)
+{
+    if (shader_constants->tonemap_method != 0.0f) {
+        // Tone mapping always scales
+        return true;
+    }
+
+    // The shader normalizes the PQ input using the SDR white point and then multiplies by the color scale
+    if (SDL_fabs((shader_constants->sdr_white_point - (shader_constants->color_scale * SCRGB_NITS))) > 1.0f) {
+        return true;
+    }
+
+    return false;
+}
+
 static D3D11_Shader SelectShader(SDL_Renderer *renderer, const D3D11_PixelShaderConstants *shader_constants)
 {
     if (shader_constants) {
         if (renderer->current_colorspace == SDL_COLORSPACE_HDR10) {
-            float SDR_white_point;
-            if (renderer->target) {
-                SDR_white_point = renderer->target->SDR_white_point;
-            } else {
-                SDR_white_point = renderer->SDR_white_point;
-            }
             if (shader_constants->input_type == INPUTTYPE_HDR10 &&
-                shader_constants->color_scale == SDR_white_point) {
+                !PQShaderScalesInput(shader_constants)) {
                 // Do a simple 1-1 copy
                 return SHADER_RGB_SIMPLE;
             } else {
@@ -2681,9 +2690,9 @@ static bool D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
             color.b *= cmd->data.color.color_scale;
 
             if (renderer->current_colorspace == SDL_COLORSPACE_HDR10) {
-                color.r = SDL_PQfromNits(color.r * 80.0f);
-                color.g = SDL_PQfromNits(color.g * 80.0f);
-                color.b = SDL_PQfromNits(color.b * 80.0f);
+                color.r = SDL_PQfromNits(color.r * SCRGB_NITS);
+                color.g = SDL_PQfromNits(color.g * SCRGB_NITS);
+                color.b = SDL_PQfromNits(color.b * SCRGB_NITS);
             }
 
             ID3D11DeviceContext_ClearRenderTargetView(rendererData->d3dContext, D3D11_GetCurrentRenderTargetView(renderer), &color.r);
