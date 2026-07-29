@@ -817,46 +817,7 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             super.onBackPressed();
         }
     }
-
-    static OnBackInvokedCallback backButtonCallback = new OnBackInvokedCallback() {
-        Handler mBackKeyHandler;
-
-        @Override
-        public void onBackInvoked() {
-            if (mBackKeyHandler == null) {
-                mBackKeyHandler = new Handler(Looper.getMainLooper());
-            }
-
-            onNativeKeyDown(KeyEvent.KEYCODE_BACK);
-            mBackKeyHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    onNativeKeyUp(KeyEvent.KEYCODE_BACK);
-                }
-            }, 500);
-        }
-    };
-
-    static boolean mBackKeyTrapEnabled = false;
     public static void setBackButtonTrapEnabled(boolean enabled) {
-
-        if ( Build.VERSION.SDK_INT < 33 ) {
-            // We're old enough that we just use the old onBackPressed behavior.
-            return;
-        }
-
-        // Check so we don't register the same callback twice.
-        if (enabled == mBackKeyTrapEnabled) {
-            return;
-        }
-
-        if (enabled) {
-            mSingleton.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backButtonCallback);
-        }
-        else {
-            mSingleton.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backButtonCallback);
-        }
-        mBackKeyTrapEnabled = enabled;
     }
 
     // File dialog types
