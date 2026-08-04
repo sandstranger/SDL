@@ -396,6 +396,10 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             return;
         }
 
+        if (Build.VERSION.SDK_INT >= 30 /* Android 11 (R) */) {
+            getWindow().setDecorFitsSystemWindows(false);
+        }
+
         /* Control activity re-creation */
         if (mSDLMainFinished || mActivityCreated) {
               boolean allow_recreate = SDLActivity.nativeAllowRecreateActivity();
