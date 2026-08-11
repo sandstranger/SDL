@@ -75,6 +75,24 @@ bool Android_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
     _this->egl_data->eglWaitGL();*/
     result = SDL_EGL_SwapBuffers(_this, window->internal->egl_surface);
 
+    if (!result){
+        static PFNEGLGETERRORPROC p_eglGetError = NULL;
+        if (!p_eglGetError)
+        {
+            p_eglGetError = (PFNEGLGETERRORPROC) SDL_EGL_GetProcAddress("eglGetError");
+        }
+        if (p_eglGetError && p_eglGetError() != EGL_BAD_SURFACE)
+        {
+            return result;
+        }
+        SDL_GLContext context = SDL_GL_GetCurrentContext();
+        if (context != NULL)
+        {
+            SDL_GL_MakeCurrent(window, NULL);
+            SDL_GL_MakeCurrent(window, context);
+        }
+    }
+
     Android_UnlockActivityMutex();
 
     return result;
