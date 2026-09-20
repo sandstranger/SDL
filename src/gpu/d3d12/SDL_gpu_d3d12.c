@@ -3535,6 +3535,9 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
             srvDesc.Texture3D.MipLevels = createinfo->num_levels;
             srvDesc.Texture3D.MostDetailedMip = 0;
             srvDesc.Texture3D.ResourceMinLODClamp = 0; // default behavior
+        } else if (createinfo->sample_count > SDL_GPU_SAMPLECOUNT_1) {
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+            srvDesc.Texture2DMS.UnusedField_NothingToDefine = 0;
         } else {
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Texture2D.MipLevels = createinfo->num_levels;
@@ -6004,7 +6007,11 @@ static void D3D12_UploadToTexture(
         needsPlacementCopy = source->offset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT != 0;
     }
 
-    alignedBytesPerSlice = alignedRowPitch * destination->h;
+    alignedBytesPerSlice = alignedRowPitch * blockHeight;
+    if (!renderer->UnrestrictedBufferTextureCopyPitchSupported && destination->d > 1 && alignedBytesPerSlice % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT != 0) {
+        needsRealignment = true;
+        alignedBytesPerSlice = D3D12_INTERNAL_Align(alignedBytesPerSlice, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+    }
 
     sourceLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
     sourceLocation.PlacedFootprint.Footprint.Format = SDLToD3D12_TextureFormat[textureContainer->header.info.format];
@@ -6018,7 +6025,7 @@ static void D3D12_UploadToTexture(
         temporaryBuffer = D3D12_INTERNAL_CreateBuffer(
             d3d12CommandBuffer->renderer,
             0,
-            alignedRowPitch * blockHeight * destination->d,
+            alignedBytesPerSlice * destination->d,
             D3D12_BUFFER_TYPE_UPLOAD,
             NULL);
 
@@ -7920,8 +7927,9 @@ static bool D3D12_INTERNAL_CleanCommandBuffer(
     return true;
 }
 
-static bool D3D12_Submit(
-    SDL_GPUCommandBuffer *commandBuffer)
+static bool D3D12_INTERNAL_Submit(
+    SDL_GPUCommandBuffer *commandBuffer,
+    SDL_GPUFence **fence)
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
     D3D12Renderer *renderer = d3d12CommandBuffer->renderer;
@@ -7997,6 +8005,12 @@ static bool D3D12_Submit(
     if (!d3d12CommandBuffer->inFlightFence) {
         SDL_UnlockMutex(renderer->submitLock);
         return false;
+    }
+
+    // Return the fence while submitLock is held, another thread could
+    // recycle this command buffer as soon as the lock is released.
+    if (fence) {
+        *fence = (SDL_GPUFence *)d3d12CommandBuffer->inFlightFence;
     }
 
     // Mark that a fence should be signaled after command list execution
@@ -8097,15 +8111,22 @@ static bool D3D12_Submit(
     return result;
 }
 
+static bool D3D12_Submit(
+    SDL_GPUCommandBuffer *commandBuffer)
+{
+    return D3D12_INTERNAL_Submit(commandBuffer, NULL);
+}
+
 static SDL_GPUFence *D3D12_SubmitAndAcquireFence(
     SDL_GPUCommandBuffer *commandBuffer)
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
+    SDL_GPUFence *fence = NULL;
     d3d12CommandBuffer->autoReleaseFence = false;
-    if (!D3D12_Submit(commandBuffer)) {
+    if (!D3D12_INTERNAL_Submit(commandBuffer, &fence)) {
         return NULL;
     }
-    return (SDL_GPUFence *)d3d12CommandBuffer->inFlightFence;
+    return fence;
 }
 
 static bool D3D12_Cancel(
@@ -8335,6 +8356,13 @@ static bool D3D12_SupportsSampleCount(
     featureData.Flags = (D3D12_MULTISAMPLE_QUALITY_LEVEL_FLAGS)0;
 #endif
     featureData.Format = SDLToD3D12_TextureFormat[format];
+
+    if (IsDepthFormat(format)) {
+        featureData.Format = SDLToD3D12_DepthFormat[format];
+    } else {
+        featureData.Format = SDLToD3D12_TextureFormat[format];
+    }
+
     featureData.SampleCount = SDLToD3D12_SampleCount[sampleCount];
     res = ID3D12Device_CheckFeatureSupport(
         renderer->device,
