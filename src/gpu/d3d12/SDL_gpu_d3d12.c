@@ -601,27 +601,10 @@ static DXGI_FORMAT SDLToD3D12_TypelessFormat[] = {
 SDL_COMPILE_TIME_ASSERT(SDLToD3D12_TypelessFormat, SDL_arraysize(SDLToD3D12_TypelessFormat) == SDL_GPU_TEXTUREFORMAT_MAX_ENUM_VALUE);
 
 #ifdef HAVE_GPU_OPENXR
-// For XR sRGB format selection - maps DXGI sRGB formats to SDL formats
-typedef struct TextureFormatPair
-{
-    DXGI_FORMAT dxgi;
-    SDL_GPUTextureFormat sdl;
-} TextureFormatPair;
-
-static TextureFormatPair SDLToD3D12_TextureFormat_SrgbOnly[] = {
-    { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB },
-    { DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB },
-    { DXGI_FORMAT_BC1_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_BC1_RGBA_UNORM_SRGB },
-    { DXGI_FORMAT_BC2_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_BC2_RGBA_UNORM_SRGB },
-    { DXGI_FORMAT_BC3_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_BC3_RGBA_UNORM_SRGB },
-    { DXGI_FORMAT_BC7_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM_SRGB },
-};
-
 // Forward declarations for XR helper functions
 static bool D3D12_INTERNAL_SearchForOpenXrGpuExtension(XrExtensionProperties *found_extension);
 static XrResult D3D12_INTERNAL_GetXrGraphicsRequirements(XrInstance instance, XrSystemId systemId, D3D_FEATURE_LEVEL *minimumFeatureLevel, LUID *adapter);
 static bool D3D12_INTERNAL_GetAdapterByLuid(LUID luid, IDXGIFactory1 *factory, IDXGIAdapter1 **outAdapter);
-static bool D3D12_INTERNAL_FindXRSrgbSwapchain(int64_t *supportedFormats, Uint32 supportedFormatsCount, SDL_GPUTextureFormat *sdlFormat, DXGI_FORMAT *dxgiFormat);
 #endif /* HAVE_GPU_OPENXR */
 
 static D3D12_COMPARISON_FUNC SDLToD3D12_CompareOp[] = {
@@ -931,6 +914,10 @@ struct D3D12Renderer
     WinPixEventRuntimeFns winpixeventruntimeFns;
 #endif
     ID3D12Debug *d3d12Debug;
+#if !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
+    ID3D12InfoQueue *debugInfoQueue;
+    BOOL InfoQueueMessageCallbackSupported;
+#endif
     BOOL supportsTearing;
     SDL_SharedObject *d3d12_dll;
     ID3D12Device *device;
@@ -1267,6 +1254,7 @@ static void D3D12_ReleaseWindow(SDL_GPURenderer *driverData, SDL_Window *window)
 static bool D3D12_Wait(SDL_GPURenderer *driverData);
 static bool D3D12_WaitForFences(SDL_GPURenderer *driverData, bool waitAll, SDL_GPUFence *const *fences, Uint32 numFences);
 static void D3D12_INTERNAL_ReleaseBlitPipelines(SDL_GPURenderer *driverData);
+static void D3D12_INTERNAL_DrainInfoQueueMessages(D3D12Renderer *renderer);
 
 // Helpers
 
@@ -1737,6 +1725,10 @@ static void D3D12_INTERNAL_DestroyRenderer(D3D12Renderer *renderer)
         ID3D12CommandQueue_Release(renderer->commandQueue);
         renderer->commandQueue = NULL;
     }
+    if (renderer->debugInfoQueue) {
+        ID3D12InfoQueue_Release(renderer->debugInfoQueue);
+        renderer->debugInfoQueue = NULL;
+    }
     if (renderer->device) {
         ID3D12Device_Release(renderer->device);
         renderer->device = NULL;
@@ -1996,7 +1988,7 @@ static void D3D12_INTERNAL_TextureTransitionToDefaultUsage(
 static D3D12_RESOURCE_STATES D3D12_INTERNAL_DefaultBufferResourceState(
     D3D12Buffer *buffer)
 {
-    D3D12_RESOURCE_STATES states = (D3D12_RESOURCE_STATES)0;
+    D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
 
     if (buffer->container->usage & SDL_GPU_BUFFERUSAGE_VERTEX) {
         states |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
@@ -7981,6 +7973,9 @@ static bool D3D12_INTERNAL_Submit(
 
     // Notify the command buffer that we have completed recording
     res = ID3D12GraphicsCommandList_Close(d3d12CommandBuffer->graphicsCommandList);
+#if !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
+    D3D12_INTERNAL_DrainInfoQueueMessages(renderer);
+#endif
     CHECK_D3D12_ERROR_AND_RETURN("Failed to close command list!", false);
 
     res = ID3D12GraphicsCommandList_QueryInterface(
@@ -8139,6 +8134,9 @@ static bool D3D12_Cancel(
 
     // Notify the command buffer that we have completed recording
     res = ID3D12GraphicsCommandList_Close(d3d12CommandBuffer->graphicsCommandList);
+#if !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
+    D3D12_INTERNAL_DrainInfoQueueMessages(renderer);
+#endif
     CHECK_D3D12_ERROR_AND_RETURN("Failed to close command list!", false);
 
     d3d12CommandBuffer->autoReleaseFence = false;
@@ -8813,7 +8811,7 @@ static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(D3D12Renderer *rende
         D3D12_MESSAGE_SEVERITY_CORRUPTION,
         true);
 
-    ID3D12InfoQueue_Release(infoQueue);
+    renderer->debugInfoQueue = infoQueue;
 }
 
 static void WINAPI D3D12_INTERNAL_OnD3D12DebugInfoMsg(
@@ -8908,6 +8906,7 @@ static void WINAPI D3D12_INTERNAL_OnD3D12DebugInfoMsg(
 static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoLogger(D3D12Renderer *renderer)
 {
     ID3D12InfoQueue1 *infoQueue = NULL;
+    DWORD callbackCookie = 0;
     HRESULT res;
 
     res = ID3D12Device_QueryInterface(
@@ -8918,14 +8917,49 @@ static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoLogger(D3D12Renderer *rend
         return;
     }
 
-    ID3D12InfoQueue1_RegisterMessageCallback(
+    res = ID3D12InfoQueue1_RegisterMessageCallback(
         infoQueue,
         D3D12_INTERNAL_OnD3D12DebugInfoMsg,
         D3D12_MESSAGE_CALLBACK_FLAG_NONE,
         NULL,
-        NULL);
+        &callbackCookie);
+    if (SUCCEEDED(res)) {
+        renderer->InfoQueueMessageCallbackSupported = true;
+    }
 
     ID3D12InfoQueue1_Release(infoQueue);
+}
+
+static void D3D12_INTERNAL_DrainInfoQueueMessages(D3D12Renderer *renderer)
+{
+    ID3D12InfoQueue *infoQueue = renderer->debugInfoQueue;
+    UINT64 count, i;
+
+    if (renderer->InfoQueueMessageCallbackSupported || infoQueue == NULL) {
+        return;
+    }
+
+    count = ID3D12InfoQueue_GetNumStoredMessages(infoQueue);
+    if (count == 0) {
+        return;
+    }
+
+    for (i = 0; i < count; i += 1) {
+        SIZE_T size = 0;
+        ID3D12InfoQueue_GetMessage(infoQueue, i, NULL, &size);
+        D3D12_MESSAGE *message = (D3D12_MESSAGE *)SDL_malloc(size);
+        if (message && SUCCEEDED(ID3D12InfoQueue_GetMessage(infoQueue, i, message, &size))) {
+            D3D12_INTERNAL_OnD3D12DebugInfoMsg(
+                message->Category,
+                message->Severity,
+                message->ID,
+                message->pDescription,
+                NULL);
+        }
+        SDL_free(message);
+    }
+
+    ID3D12InfoQueue_ClearStoredMessages(infoQueue);
 }
 #endif
 
@@ -9019,24 +9053,6 @@ static bool D3D12_INTERNAL_GetAdapterByLuid(LUID luid, IDXGIFactory1 *factory, I
         IDXGIAdapter1_Release(adapter);
     }
 }
-
-static bool D3D12_INTERNAL_FindXRSrgbSwapchain(
-    int64_t *supportedFormats,
-    Uint32 supportedFormatsCount,
-    SDL_GPUTextureFormat *sdlFormat,
-    DXGI_FORMAT *dxgiFormat)
-{
-    for (Uint32 i = 0; i < SDL_arraysize(SDLToD3D12_TextureFormat_SrgbOnly); i++) {
-        for (Uint32 j = 0; j < supportedFormatsCount; j++) {
-            if (SDLToD3D12_TextureFormat_SrgbOnly[i].dxgi == supportedFormats[j]) {
-                *sdlFormat = SDLToD3D12_TextureFormat_SrgbOnly[i].sdl;
-                *dxgiFormat = SDLToD3D12_TextureFormat_SrgbOnly[i].dxgi;
-                return true;
-            }
-        }
-    }
-    return false;
-}
 #endif /* HAVE_GPU_OPENXR */
 
 static XrResult D3D12_DestroyXRSwapchain(
@@ -9106,38 +9122,37 @@ static SDL_GPUTextureFormat* D3D12_GetXRSwapchainFormats(
         return NULL;
     }
 
-    // FIXME: For now we're just searching for the optimal format, not all supported formats.
-    // FIXME: Expand this search for all SDL_GPU formats!
+    SDL_GPUTextureFormat *sdl_formats = SDL_stack_alloc(SDL_GPUTextureFormat, num_supported_formats);
+    uint32_t num_found_formats = 0;
 
-    SDL_GPUTextureFormat sdlFormat = SDL_GPU_TEXTUREFORMAT_INVALID;
-    DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
-    // The OpenXR spec recommends applications not submit linear data, so let's try to explicitly find an sRGB swapchain before we search the whole list
-    if (!D3D12_INTERNAL_FindXRSrgbSwapchain(supported_formats, num_supported_formats, &sdlFormat, &dxgiFormat)) {
-        // Iterate over all formats the runtime supports
-        for (i = 0; i < num_supported_formats && dxgiFormat == DXGI_FORMAT_UNKNOWN; i++) {
-            // Iterate over all formats we support
-            for (j = 0; j < SDL_arraysize(SDLToD3D12_TextureFormat); j++) {
-                // Pick the first format the runtime wants that we also support, the runtime should return these in order of preference
-                if (SDLToD3D12_TextureFormat[j] == supported_formats[i]) {
-                    dxgiFormat = (DXGI_FORMAT)supported_formats[i];
-                    sdlFormat = j;
-                    break;
-                }
+    // Iterate over all formats the runtime supports
+    for (i = 0; i < num_supported_formats; i++) {
+        // Iterate over all formats we support
+        for (j = 0; j < SDL_arraysize(SDLToD3D12_TextureFormat); j++) {
+            if (SDLToD3D12_TextureFormat[j] == supported_formats[i]) {
+                // Add the format match we found, linearly. The output order should match the order of the runtime.
+                sdl_formats[num_found_formats++] = j;
+                break;
             }
         }
     }
 
     SDL_stack_free(supported_formats);
 
-    if (dxgiFormat == DXGI_FORMAT_UNKNOWN) {
+    if (num_found_formats == 0) {
         SDL_SetError("Failed to find a swapchain format supported by both OpenXR and SDL");
+        SDL_stack_free(sdl_formats);
         return NULL;
     }
 
-    SDL_GPUTextureFormat *retval = (SDL_GPUTextureFormat*) SDL_malloc(sizeof(SDL_GPUTextureFormat) * 2);
-    retval[0] = sdlFormat;
-    retval[1] = SDL_GPU_TEXTUREFORMAT_INVALID;
-    *num_formats = 1;
+    SDL_GPUTextureFormat *retval = (SDL_GPUTextureFormat *)SDL_calloc((size_t)num_found_formats + 1, sizeof(SDL_GPUTextureFormat));
+    SDL_memcpy(retval, sdl_formats, sizeof(SDL_GPUTextureFormat) * num_found_formats); // Copy the translated formats
+    retval[num_found_formats] = SDL_GPU_TEXTUREFORMAT_INVALID; // Add a termination for good measure
+
+    *num_formats = num_found_formats;
+
+    SDL_stack_free(supported_formats);
+
     return retval;
 #else
     SDL_SetError("SDL not built with OpenXR support");
