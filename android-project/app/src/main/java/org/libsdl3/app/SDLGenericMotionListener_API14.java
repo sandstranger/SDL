@@ -1,5 +1,6 @@
 package org.libsdl3.app;
 
+import android.os.Build;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
@@ -52,7 +53,7 @@ public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListe
                         y = getEventY(event, i);
 
                         SDLActivity.onNativeMouse(buttonState, action, x, y, isRelative);
-                        consumed = true;                            
+                        consumed = true;
                         break;
 
                     default:
