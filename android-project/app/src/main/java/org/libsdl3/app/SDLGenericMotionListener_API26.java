@@ -20,6 +20,19 @@ public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API
     }
 
     @Override
+    public boolean onCapturedPointer(View view, MotionEvent event) {
+
+        // Captured Pointer events are *always* relative
+        float x = event.getX();
+        float y = event.getY();
+        int buttonState = event.getButtonState();
+        int action = event.getActionMasked();
+
+        SDLActivity.onNativeMouse(buttonState, action, x, y, true);
+        return true;
+    }
+
+    @Override
     boolean setRelativeMouseEnabled(boolean enabled) {
 
         if (Build.VERSION.SDK_INT < 26 /* Android 8.0 (O) */) {

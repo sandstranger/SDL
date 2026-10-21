@@ -25,6 +25,13 @@ public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListe
 
             if (toolType == MotionEvent.TOOL_TYPE_MOUSE) {
                 int buttonState = event.getButtonState();
+                boolean isRelative = checkRelativeEvent(event);
+
+                if (Build.VERSION.SDK_INT >= 26 /* Android 8.0 (O) */ && isRelative) {
+                    // We'll be using the onCapturedPointer event handler instead, so
+                    // just bounce.
+                    return false;
+                }
 
                 switch (action) {
                     case MotionEvent.ACTION_SCROLL:
@@ -38,17 +45,14 @@ public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListe
                     case MotionEvent.ACTION_MOVE:           // Relative mode mouse movement
                     case MotionEvent.ACTION_BUTTON_PRESS:
                     case MotionEvent.ACTION_BUTTON_RELEASE:
-                        boolean isRelative = checkRelativeEvent(event);
+                    case MotionEvent.ACTION_CANCEL:         // Mouse drag ended (e.g. button released)
+                    case MotionEvent.ACTION_HOVER_ENTER:
+                    case MotionEvent.ACTION_HOVER_EXIT:
                         x = getEventX(event, i);
                         y = getEventY(event, i);
 
-                        if (isRelative || (action != MotionEvent.ACTION_BUTTON_PRESS && action != MotionEvent.ACTION_BUTTON_RELEASE)) {
-                            // In absolute mode, we get touch events alongside the mouse clicks, and handle those elsewhere. 
-                            // In relative mode, we ONLY get the ACTION_BUTTON_PRESS/ACTION_BUTTON_RELEASE, so if we don't consume them they
-                            // will be turned into key events for Enter or Select or Back or something similar.
-                            SDLActivity.onNativeMouse(buttonState, action, x, y, isRelative);
-                            consumed = true;                            
-                        }
+                        SDLActivity.onNativeMouse(buttonState, action, x, y, isRelative);
+                        consumed = true;                            
                         break;
 
                     default:
