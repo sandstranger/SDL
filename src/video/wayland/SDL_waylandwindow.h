@@ -60,8 +60,6 @@ struct SDL_WindowData
                     struct xdg_positioner *xdg_positioner;
                 } popup;
             };
-
-            Uint32 serial;
         } xdg;
     } shell_surface;
 
@@ -133,10 +131,11 @@ struct SDL_WindowData
 
     struct
     {
-        struct wl_callback *frame_callback;
         struct wl_event_queue *queue;
         struct wl_surface *surface_wrapper;
+        struct wl_callback *frame_callback;
         SDL_AtomicInt swap_interval_ready;
+        bool vsync;
     } presentation;
 
     SDL_DisplayData **outputs;
@@ -242,7 +241,6 @@ struct SDL_WindowData
     bool suspended;
     bool resizing;
     bool active;
-    bool pending_config_ack;
     bool pending_state_commit;
     bool limits_changed;
     bool is_fullscreen;
@@ -251,6 +249,7 @@ struct SDL_WindowData
     bool showing_window;
     bool fullscreen_was_positioned;
     bool show_hide_sync_required;
+    bool updating_size;
     bool scale_to_display;
     bool reparenting_required;
     bool double_buffer;
