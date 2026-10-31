@@ -58,17 +58,11 @@ static SDL_JoystickDriver *SDL_joystick_drivers[] = {
 #ifdef SDL_JOYSTICK_GAMEINPUT // Higher priority than other Windows drivers
     &SDL_GAMEINPUT_JoystickDriver,
 #endif
-#ifdef SDL_JOYSTICK_RAWINPUT // Before WINDOWS driver, as WINDOWS wants to check if this driver is handling things
-    &SDL_RAWINPUT_JoystickDriver,
+#if defined(SDL_JOYSTICK_XINPUT)
+    &SDL_XINPUT_JoystickDriver,
 #endif
-#if defined(SDL_JOYSTICK_DINPUT) || defined(SDL_JOYSTICK_XINPUT) // Before WGI driver, as WGI wants to check if this driver is handling things
-    &SDL_WINDOWS_JoystickDriver,
-#endif
-#ifdef SDL_JOYSTICK_WGI
-    &SDL_WGI_JoystickDriver,
-#endif
-#ifdef SDL_JOYSTICK_WINMM
-    &SDL_WINMM_JoystickDriver,
+#if defined(SDL_JOYSTICK_DINPUT)
+    &SDL_DINPUT_JoystickDriver,
 #endif
 #ifdef SDL_JOYSTICK_LINUX
     &SDL_LINUX_JoystickDriver,
@@ -678,6 +672,8 @@ static SDL_vidpid_list zero_centered_devices = {
     false
 };
 
+static SDL_SpinLock SDL_vidpid_list_lock;
+
 #define CHECK_JOYSTICK_MAGIC(joystick, result)                          \
     CHECK_PARAM(!SDL_ObjectValid(joystick, SDL_OBJECT_TYPE_JOYSTICK)) { \
         SDL_InvalidParamError("joystick");                              \
@@ -837,7 +833,9 @@ static bool SDL_SetJoystickIDForPlayerIndex(int player_index, SDL_JoystickID ins
 
     // Update the driver with the new index
     if (SDL_GetDriverAndJoystickIndex(instance_id, &driver, &device_index)) {
-        driver->SetDevicePlayerIndex(device_index, player_index);
+        if (driver->SetDevicePlayerIndex) {
+            driver->SetDevicePlayerIndex(device_index, player_index);
+        }
     }
 
     // Move any existing joystick to another slot
@@ -1449,9 +1447,7 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
 
     // We know the initial values for HIDAPI and XInput joysticks
     if ((SDL_IsJoystickHIDAPI(joystick->guid) ||
-         SDL_IsJoystickXInput(joystick->guid) ||
-         SDL_IsJoystickRAWINPUT(joystick->guid) ||
-         SDL_IsJoystickWGI(joystick->guid)) &&
+         SDL_IsJoystickXInput(joystick->guid)) &&
         joystick->naxes >= SDL_GAMEPAD_AXIS_COUNT) {
         int left_trigger, right_trigger;
         if (SDL_IsJoystickXInput(joystick->guid)) {
@@ -1687,7 +1683,9 @@ bool SDL_PrivateJoystickGetAutoGamepadMapping(SDL_JoystickID instance_id, SDL_Ga
 
     SDL_LockJoysticks();
     if (SDL_GetDriverAndJoystickIndex(instance_id, &driver, &device_index)) {
-        is_ok = driver->GetGamepadMapping(device_index, out);
+        if (driver->GetGamepadMapping) {
+            is_ok = driver->GetGamepadMapping(device_index, out);
+        }
     }
     SDL_UnlockJoysticks();
 
@@ -1922,68 +1920,78 @@ bool SDL_JoystickHasSensor(SDL_Joystick *joystick, SDL_SensorType type)
  */
 bool SDL_SetJoystickSensorEnabled(SDL_Joystick *joystick, SDL_SensorType type, bool enabled)
 {
+    // In case someone passes non bool value
+    enabled = (enabled != false);
+
     SDL_LockJoysticks();
     {
         CHECK_JOYSTICK_MAGIC(joystick, false);
         for (int i = 0; i < joystick->nsensors; ++i) {
             SDL_JoystickSensorInfo *sensor = &joystick->sensors[i];
 
-            if (sensor->type == type) {
-                if (sensor->enabled == (enabled != false)) {
-                    SDL_UnlockJoysticks();
-                    return true;
-                }
+            if (sensor->type != type) {
+                continue;
+            }
 
-                if (type == SDL_SENSOR_ACCEL && joystick->accel_sensor) {
-                    if (enabled) {
-                        joystick->accel = SDL_OpenSensor(joystick->accel_sensor);
-                        if (!joystick->accel) {
-                            SDL_UnlockJoysticks();
-                            return false;
-                        }
-                    } else {
-                        if (joystick->accel) {
-                            SDL_CloseSensor(joystick->accel);
-                            joystick->accel = NULL;
-                        }
-                    }
-                } else if (type == SDL_SENSOR_GYRO && joystick->gyro_sensor) {
-                    if (enabled) {
-                        joystick->gyro = SDL_OpenSensor(joystick->gyro_sensor);
-                        if (!joystick->gyro) {
-                            SDL_UnlockJoysticks();
-                            return false;
-                        }
-                    } else {
-                        if (joystick->gyro) {
-                            SDL_CloseSensor(joystick->gyro);
-                            joystick->gyro = NULL;
-                        }
-                    }
-                } else {
-                    if (enabled) {
-                        if (joystick->nsensors_enabled == 0) {
-                            if (!joystick->driver->SetSensorsEnabled(joystick, true)) {
-                                SDL_UnlockJoysticks();
-                                return false;
-                            }
-                        }
-                        ++joystick->nsensors_enabled;
-                    } else {
-                        if (joystick->nsensors_enabled == 1) {
-                            if (!joystick->driver->SetSensorsEnabled(joystick, false)) {
-                                SDL_UnlockJoysticks();
-                                return false;
-                            }
-                        }
-                        --joystick->nsensors_enabled;
-                    }
-                }
-
-                sensor->enabled = enabled;
+            if (sensor->enabled == enabled) {
                 SDL_UnlockJoysticks();
                 return true;
             }
+
+            bool result = true;
+            if (type == SDL_SENSOR_ACCEL && joystick->accel_sensor) {
+                if (enabled) {
+                    joystick->accel = SDL_OpenSensor(joystick->accel_sensor);
+                    if (!joystick->accel) {
+                        result = false;
+                    }
+                } else {
+                    if (joystick->accel) {
+                        SDL_CloseSensor(joystick->accel);
+                        joystick->accel = NULL;
+                    }
+                }
+            } else if (type == SDL_SENSOR_GYRO && joystick->gyro_sensor) {
+                if (enabled) {
+                    joystick->gyro = SDL_OpenSensor(joystick->gyro_sensor);
+                    if (!joystick->gyro) {
+                        result = false;
+                    }
+                } else {
+                    if (joystick->gyro) {
+                        SDL_CloseSensor(joystick->gyro);
+                        joystick->gyro = NULL;
+                    }
+                }
+            } else if (joystick->driver->SetSensorsEnabled) {
+                if (enabled) {
+                    if (joystick->nsensors_enabled == 0) {
+                        if (!joystick->driver->SetSensorsEnabled(joystick, true)) {
+                            result = false;
+                        }
+                    }
+                    if (result) {
+                        ++joystick->nsensors_enabled;
+                    }
+                } else {
+                    if (joystick->nsensors_enabled == 1) {
+                        if (!joystick->driver->SetSensorsEnabled(joystick, false)) {
+                            result = false;
+                        }
+                    }
+                    if (result) {
+                        --joystick->nsensors_enabled;
+                    }
+                }
+            } else {
+                result = SDL_Unsupported();
+            }
+
+            if (result) {
+                sensor->enabled = enabled;
+            }
+            SDL_UnlockJoysticks();
+            return result;
         }
     }
     SDL_UnlockJoysticks();
@@ -2250,7 +2258,7 @@ bool SDL_RumbleJoystick(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uin
             high_frequency_rumble == joystick->high_frequency_rumble) {
             // Just update the expiration
             result = true;
-        } else {
+        } else if (joystick->driver->Rumble) {
             result = joystick->driver->Rumble(joystick, low_frequency_rumble, high_frequency_rumble);
             if (result) {
                 joystick->rumble_resend = SDL_GetTicks() + SDL_RUMBLE_RESEND_MS;
@@ -2260,6 +2268,8 @@ bool SDL_RumbleJoystick(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uin
             } else {
                 joystick->rumble_resend = 0;
             }
+        } else {
+            result = SDL_Unsupported();
         }
 
         if (result) {
@@ -2293,7 +2303,7 @@ bool SDL_RumbleJoystickTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint
         if (left_rumble == joystick->left_trigger_rumble && right_rumble == joystick->right_trigger_rumble) {
             // Just update the expiration
             result = true;
-        } else {
+        } else if (joystick->driver->RumbleTriggers) {
             result = joystick->driver->RumbleTriggers(joystick, left_rumble, right_rumble);
             if (result) {
                 joystick->trigger_rumble_resend = SDL_GetTicks() + SDL_RUMBLE_RESEND_MS;
@@ -2303,6 +2313,8 @@ bool SDL_RumbleJoystickTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint
             } else {
                 joystick->trigger_rumble_resend = 0;
             }
+        } else {
+            result = SDL_Unsupported();
         }
 
         if (result) {
@@ -2325,19 +2337,22 @@ bool SDL_RumbleJoystickTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint
 bool SDL_SetJoystickLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
     bool result;
-    bool isfreshvalue;
 
     SDL_LockJoysticks();
     {
         CHECK_JOYSTICK_MAGIC(joystick, false);
 
-        isfreshvalue = red != joystick->led_red ||
-                       green != joystick->led_green ||
-                       blue != joystick->led_blue;
+        bool isfreshvalue = red != joystick->led_red ||
+                            green != joystick->led_green ||
+                            blue != joystick->led_blue;
 
         if (isfreshvalue || SDL_GetTicks() >= joystick->led_expiration) {
-            result = joystick->driver->SetLED(joystick, red, green, blue);
-            joystick->led_expiration = SDL_GetTicks() + SDL_LED_MIN_REPEAT_MS;
+            if (joystick->driver->SetLED) {
+                result = joystick->driver->SetLED(joystick, red, green, blue);
+                joystick->led_expiration = SDL_GetTicks() + SDL_LED_MIN_REPEAT_MS;
+            } else {
+                result = SDL_Unsupported();
+            }
         } else {
             // Avoid spamming the driver
             result = true;
@@ -2361,7 +2376,11 @@ bool SDL_SendJoystickEffect(SDL_Joystick *joystick, const void *data, int size)
     {
         CHECK_JOYSTICK_MAGIC(joystick, false);
 
-        result = joystick->driver->SendEffect(joystick, data, size);
+        if (joystick->driver->SendEffect) {
+            result = joystick->driver->SendEffect(joystick, data, size);
+        } else {
+            result = SDL_Unsupported();
+        }
     }
     SDL_UnlockJoysticks();
 
@@ -2552,6 +2571,9 @@ void SDL_PrivateJoystickAddSensor(SDL_Joystick *joystick, SDL_SensorType type, f
 
     SDL_AssertJoysticksLocked();
 
+    // Make sure we can actually enable this sensor
+    SDL_assert(joystick->driver->SetSensorsEnabled);
+
     nsensors = joystick->nsensors + 1;
     sensors = (SDL_JoystickSensorInfo *)SDL_realloc(joystick->sensors, (nsensors * sizeof(SDL_JoystickSensorInfo)));
     if (sensors) {
@@ -2615,7 +2637,7 @@ void SDL_PrivateJoystickAdded(SDL_JoystickID instance_id)
 
     if (SDL_GetDriverAndJoystickIndex(instance_id, &driver, &device_index)) {
         player_index = driver->GetDeviceSteamVirtualGamepadSlot(device_index);
-        if (player_index < 0) {
+        if (player_index < 0 && driver->GetDevicePlayerIndex) {
             player_index = driver->GetDevicePlayerIndex(device_index);
         }
     }
@@ -3586,11 +3608,6 @@ bool SDL_IsJoystickXInput(SDL_GUID guid)
     return (guid.data[14] == 'x') ? true : false;
 }
 
-bool SDL_IsJoystickWGI(SDL_GUID guid)
-{
-    return (guid.data[14] == 'w') ? true : false;
-}
-
 bool SDL_IsJoystickGameInput(SDL_GUID guid)
 {
     return (guid.data[14] == 'g') ? true : false;
@@ -3604,11 +3621,6 @@ bool SDL_IsJoystickHIDAPI(SDL_GUID guid)
 bool SDL_IsJoystickMFI(SDL_GUID guid)
 {
     return (guid.data[14] == 'm') ? true : false;
-}
-
-bool SDL_IsJoystickRAWINPUT(SDL_GUID guid)
-{
-    return (guid.data[14] == 'r') ? true : false;
 }
 
 bool SDL_IsJoystickVIRTUAL(SDL_GUID guid)
@@ -3706,10 +3718,6 @@ static SDL_JoystickType SDL_GetJoystickGUIDType(SDL_GUID guid)
         default:
             return SDL_JOYSTICK_TYPE_UNKNOWN;
         }
-    }
-
-    if (SDL_IsJoystickWGI(guid)) {
-        return (SDL_JoystickType)guid.data[15];
     }
 
     if (SDL_IsJoystickGameInput(guid)) {
@@ -4231,28 +4239,44 @@ static void SDL_LoadVIDPIDListFromHint(const char *hint, int *num_entries, int *
 
 void SDL_LoadVIDPIDListFromHints(SDL_vidpid_list *list, const char *included_list, const char *excluded_list)
 {
-    // Empty the list
-    list->num_included_entries = 0;
-    list->num_excluded_entries = 0;
+    int num_included_entries = 0;
+    int max_included_entries = 0;
+    Uint32 *included_entries = NULL;
+    int num_excluded_entries = 0;
+    int max_excluded_entries = 0;
+    Uint32 *excluded_entries = NULL;
+    Uint32 *old_included_entries;
+    Uint32 *old_excluded_entries;
 
     // Add the initial entries
     if (list->num_initial_entries > 0) {
-        if (list->num_included_entries < list->num_initial_entries) {
-            Uint32 *entries = (Uint32 *)SDL_malloc(list->num_initial_entries * sizeof(*entries));
-            if (entries) {
-                SDL_memcpy(entries, list->initial_entries, list->num_initial_entries * sizeof(*entries));
-                list->included_entries = entries;
-                list->num_included_entries = list->num_initial_entries;
-                list->max_included_entries = list->num_initial_entries;
-            }
+        included_entries = (Uint32 *)SDL_malloc(list->num_initial_entries * sizeof(*included_entries));
+        if (included_entries) {
+            SDL_memcpy(included_entries, list->initial_entries, list->num_initial_entries * sizeof(*included_entries));
+            num_included_entries = list->num_initial_entries;
+            max_included_entries = list->num_initial_entries;
         }
     }
 
     // Add the included entries from the hint
-    SDL_LoadVIDPIDListFromHint(included_list, &list->num_included_entries, &list->max_included_entries, &list->included_entries);
+    SDL_LoadVIDPIDListFromHint(included_list, &num_included_entries, &max_included_entries, &included_entries);
 
     // Add the excluded entries from the hint
-    SDL_LoadVIDPIDListFromHint(excluded_list, &list->num_excluded_entries, &list->max_excluded_entries, &list->excluded_entries);
+    SDL_LoadVIDPIDListFromHint(excluded_list, &num_excluded_entries, &max_excluded_entries, &excluded_entries);
+
+    SDL_LockSpinlock(&SDL_vidpid_list_lock);
+    old_included_entries = list->included_entries;
+    list->included_entries = included_entries;
+    list->num_included_entries = num_included_entries;
+    list->max_included_entries = max_included_entries;
+    old_excluded_entries = list->excluded_entries;
+    list->excluded_entries = excluded_entries;
+    list->num_excluded_entries = num_excluded_entries;
+    list->max_excluded_entries = max_excluded_entries;
+    SDL_UnlockSpinlock(&SDL_vidpid_list_lock);
+
+    SDL_free(old_included_entries);
+    SDL_free(old_excluded_entries);
 }
 
 static void SDLCALL SDL_VIDPIDIncludedHintChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
@@ -4321,22 +4345,31 @@ bool SDL_VIDPIDInList(Uint16 vendor_id, Uint16 product_id, const SDL_vidpid_list
 {
     int i;
     Uint32 vidpid = MAKE_VIDPID(vendor_id, product_id);
+    bool result = false;
 
+    SDL_LockSpinlock(&SDL_vidpid_list_lock);
     for (i = 0; i < list->num_excluded_entries; ++i) {
         if (vidpid == list->excluded_entries[i]) {
-            return false;
+            goto done;
         }
     }
     for (i = 0; i < list->num_included_entries; ++i) {
         if (vidpid == list->included_entries[i]) {
-            return true;
+            result = true;
+            goto done;
         }
     }
-    return false;
+
+done:
+    SDL_UnlockSpinlock(&SDL_vidpid_list_lock);
+    return result;
 }
 
 void SDL_FreeVIDPIDList(SDL_vidpid_list *list)
 {
+    Uint32 *included_entries;
+    Uint32 *excluded_entries;
+
     if (list->included_hint_name) {
         SDL_RemoveHintCallback(list->included_hint_name, SDL_VIDPIDIncludedHintChanged, list);
     }
@@ -4345,19 +4378,19 @@ void SDL_FreeVIDPIDList(SDL_vidpid_list *list)
         SDL_RemoveHintCallback(list->excluded_hint_name, SDL_VIDPIDExcludedHintChanged, list);
     }
 
-    if (list->included_entries) {
-        SDL_free(list->included_entries);
-        list->included_entries = NULL;
-        list->num_included_entries = 0;
-        list->max_included_entries = 0;
-    }
+    SDL_LockSpinlock(&SDL_vidpid_list_lock);
+    included_entries = list->included_entries;
+    list->included_entries = NULL;
+    list->num_included_entries = 0;
+    list->max_included_entries = 0;
+    excluded_entries = list->excluded_entries;
+    list->excluded_entries = NULL;
+    list->num_excluded_entries = 0;
+    list->max_excluded_entries = 0;
+    SDL_UnlockSpinlock(&SDL_vidpid_list_lock);
 
-    if (list->excluded_entries) {
-        SDL_free(list->excluded_entries);
-        list->excluded_entries = NULL;
-        list->num_excluded_entries = 0;
-        list->max_excluded_entries = 0;
-    }
+    SDL_free(included_entries);
+    SDL_free(excluded_entries);
 
     list->initialized = false;
 }
