@@ -5,7 +5,7 @@ import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 
-public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API24 implements View.OnCapturedPointerListener {
+public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API24 {
     // Generic Motion (mouse hover, joystick...) events go here
     private boolean mRelativeModeEnabled;
 
@@ -23,10 +23,17 @@ public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API
     public boolean onCapturedPointer(View view, MotionEvent event) {
 
         // Captured Pointer events are *always* relative
-        float x = event.getX();
-        float y = event.getY();
+        float x ,y;
         int buttonState = event.getButtonState();
         int action = event.getActionMasked();
+
+        if (action == MotionEvent.ACTION_SCROLL) {
+            x = event.getAxisValue(MotionEvent.AXIS_HSCROLL);
+            y = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+        } else {
+            x = event.getX();
+            y = event.getY();
+        }
 
         SDLActivity.onNativeMouse(buttonState, action, x, y, true);
         return true;
