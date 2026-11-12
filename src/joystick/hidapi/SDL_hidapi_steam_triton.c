@@ -24,6 +24,7 @@
 
 #include "../SDL_sysjoystick.h"
 #include "SDL_hidapijoystick_c.h"
+#include "SDL_hidapi_rumble.h"
 
 #ifdef SDL_JOYSTICK_HIDAPI_STEAM_TRITON
 
@@ -52,6 +53,8 @@ enum
     SDL_GAMEPAD_BUTTON_TRITON_LEFT_PADDLE2,
     SDL_GAMEPAD_BUTTON_TRITON_RIGHT_TOUCHPAD,
     SDL_GAMEPAD_BUTTON_TRITON_LEFT_TOUCHPAD,
+    SDL_GAMEPAD_BUTTON_TRITON_LEFT_TRIGGER_CLICK,
+    SDL_GAMEPAD_BUTTON_TRITON_RIGHT_TRIGGER_CLICK,
     SDL_GAMEPAD_NUM_TRITON_BUTTONS,
 };
 
@@ -191,6 +194,10 @@ static void HIDAPI_DriverSteamTriton_HandleGenericState(SDL_DriverSteamTriton_Co
                                ((pTritonReport->buttons & TRITON_RIGHT_TOUCHPAD_CLICK) != 0));
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_TRITON_LEFT_TOUCHPAD,
                                ((pTritonReport->buttons & TRITON_LEFT_TOUCHPAD_CLICK) != 0));
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_TRITON_LEFT_TRIGGER_CLICK,
+                               ((pTritonReport->buttons & TRITON_LEFT_TRIGGER_CLICK) != 0));
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_TRITON_RIGHT_TRIGGER_CLICK,
+                               ((pTritonReport->buttons & TRITON_RIGHT_TRIGGER_CLICK) != 0));
 
         SDL_SendJoystickCapSense(timestamp, joystick, SDL_GAMEPAD_CAPSENSE_RIGHT_STICK,
                                  ((pTritonReport->buttons & TRITON_RIGHT_JOYSTICK_TOUCH) != 0));
@@ -586,7 +593,6 @@ static bool HIDAPI_DriverSteamTriton_OpenJoystick(SDL_HIDAPI_Device *device, SDL
 static bool HIDAPI_DriverSteamTriton_RumbleJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
 {
     SDL_DriverSteamTriton_Context *ctx = (SDL_DriverSteamTriton_Context *)device->context;
-    int rc;
 
     ctx->low_frequency_rumble = low_frequency_rumble;
     ctx->high_frequency_rumble = high_frequency_rumble;
@@ -603,13 +609,8 @@ static bool HIDAPI_DriverSteamTriton_RumbleJoystick(SDL_HIDAPI_Device *device, S
     msg->payload.hapticRumble.right.speed = high_frequency_rumble;
     msg->payload.hapticRumble.right.gain = 0;
 
-    rc = SDL_hid_write(device->dev, buffer, sizeof(buffer));
-    if (rc < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_INPUT, 
-            "Steam Controller HID Write FAILED! rc: %d. SDL_Error: %s", 
-            rc, SDL_GetError());
-
-        return false;
+    if (SDL_HIDAPI_SendRumble(device, buffer, sizeof(buffer)) != sizeof(buffer)) {
+        return SDL_SetError("Couldn't send rumble packet");
     }
     return true;
 }
@@ -628,6 +629,39 @@ static bool HIDAPI_DriverSteamTriton_SendJoystickEffect(SDL_HIDAPI_Device *devic
         }
         return true;
     }
+
+    // Haptic effects use short HID output reports, unlike the feature reports above
+    if (data && size > 0) {
+        const Uint8 report_id = *(const Uint8 *)data;
+        int expected_size = 0;
+
+        // Accept only known haptic report IDs and their fixed sizes
+        switch (report_id) {
+        case ID_OUT_REPORT_HAPTIC_PULSE:
+            expected_size = HID_HAPTIC_PULSE_OUTPUT_REPORT_BYTES;
+            break;
+        case ID_OUT_REPORT_HAPTIC_COMMAND:
+            expected_size = HID_HAPTIC_COMMAND_REPORT_BYTES;
+            break;
+        case ID_OUT_REPORT_HAPTIC_LFO_TONE:
+            expected_size = HID_HAPTIC_LFO_TONE_REPORT_BYTES;
+            break;
+        case ID_OUT_REPORT_HAPTIC_LOG_SWEEP:
+            expected_size = HID_HAPTIC_LOG_SWEEP_REPORT_BYTES;
+            break;
+        case ID_OUT_REPORT_HAPTIC_SCRIPT:
+            expected_size = HID_HAPTIC_SCRIPT_REPORT_BYTES;
+            break;
+        default:
+            break;
+        }
+
+        if (size == expected_size) {
+            // Windows HIDAPI may return the padded output report length.
+            return SDL_hid_write(device->dev, data, size) >= size;
+        }
+    }
+
     return SDL_Unsupported();
 }
 

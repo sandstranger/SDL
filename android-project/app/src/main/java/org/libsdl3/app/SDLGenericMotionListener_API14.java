@@ -5,7 +5,7 @@ import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 
-public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListener, View.OnCapturedPointerListener {
+public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListener {
     public static final int SDL_PEN_DEVICE_TYPE_UNKNOWN = 0;
     public static final int SDL_PEN_DEVICE_TYPE_DIRECT = 1;
     public static final int SDL_PEN_DEVICE_TYPE_INDIRECT = 2;
@@ -53,7 +53,7 @@ public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListe
                         y = getEventY(event, i);
 
                         SDLActivity.onNativeMouse(buttonState, action, x, y, isRelative);
-                        consumed = true;                            
+                        consumed = true;
                         break;
 
                     default:
@@ -119,11 +119,5 @@ public class SDLGenericMotionListener_API14 implements View.OnGenericMotionListe
 
     public int getPenDeviceType(InputDevice penDevice) {
         return SDL_PEN_DEVICE_TYPE_UNKNOWN;
-    }
-
-    @Override
-    public boolean onCapturedPointer(View view, MotionEvent event) {
-        // We can't use captured pointer listener until API 26 or later.
-        return false;
     }
 }

@@ -120,7 +120,6 @@ typedef struct
 
 #undef _guarded
 
-static SDL_GUID s_zeroGUID;
 static GamepadMapping_t *s_pSupportedGamepads SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
 static GamepadMapping_t *s_pDefaultMapping SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
 static GamepadMapping_t *s_pXInputMapping SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
@@ -217,6 +216,7 @@ static const struct SDL_GamepadBlacklistWords SDL_gamepad_blacklist_words[] = {
     {"Mouse ",          GAMEPAD_BLACKLIST_BEGIN}, // "Mouse passthrough"
     {" Pen",            GAMEPAD_BLACKLIST_END}, // "Wacom One by Wacom S Pen"
     {" Finger",         GAMEPAD_BLACKLIST_END}, // "Wacom HID 495F Finger"
+    {" Consumer Control", GAMEPAD_BLACKLIST_END}, // "PG-9083S Consumer Control"
     {" System Control", GAMEPAD_BLACKLIST_END}, // "hid-over-i2c 0107 System Control"
     {" LED ",           GAMEPAD_BLACKLIST_ANYWHERE}, // "ASRock LED Controller"
     {" Thelio ",        GAMEPAD_BLACKLIST_ANYWHERE}, // "System76 Thelio Io 2"
@@ -1258,8 +1258,8 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_GUID guid)
             // The Steam Deck's built-in controller has QAM, 4 back buttons, L/R trackpads, and L/R capacitive touch sticks
             SDL_strlcat(mapping_string, "misc1:b11,paddle1:b12,paddle2:b13,paddle3:b14,paddle4:b15,touchpad:b17,misc2:b16", sizeof(mapping_string));
         } else if (SDL_IsJoystickSteamTriton(vendor, product)) {
-            // Second generation Steam controllers have 4 back paddle buttons
-            SDL_strlcat(mapping_string, "misc1:b11,paddle1:b12,paddle2:b13,paddle3:b14,paddle4:b15,touchpad:b17,misc2:b16", sizeof(mapping_string));
+            // Second generation Steam controllers have 4 back paddle buttons, 2 trackpad clicks, and digital trigger clicks
+            SDL_strlcat(mapping_string, "misc1:b11,paddle1:b12,paddle2:b13,paddle3:b14,paddle4:b15,touchpad:b17,misc2:b16,misc3:b18,misc4:b19", sizeof(mapping_string));
         } else if (SDL_IsJoystickNintendoSwitchPro(vendor, product) ||
                    SDL_IsJoystickNintendoSwitchProInputOnly(vendor, product)) {
             // Nintendo Switch Pro controllers have a screenshot button
@@ -1370,7 +1370,7 @@ static GamepadMapping_t *SDL_PrivateMatchGamepadMappingForGUID(SDL_GUID guid, bo
     for (mapping = s_pSupportedGamepads; mapping; mapping = mapping->next) {
         SDL_GUID mapping_guid;
 
-        if (SDL_memcmp(&mapping->guid, &s_zeroGUID, sizeof(mapping->guid)) == 0) {
+        if (SDL_IsZeroGUID(&mapping->guid)) {
             continue;
         }
 
@@ -2783,7 +2783,7 @@ char **SDL_GetGamepadMappings(int *count)
     SDL_LockJoysticks();
 
     for (GamepadMapping_t *mapping = s_pSupportedGamepads; mapping; mapping = mapping->next) {
-        if (SDL_memcmp(&mapping->guid, &s_zeroGUID, sizeof(mapping->guid)) == 0) {
+        if (SDL_IsZeroGUID(&mapping->guid)) {
             continue;
         }
         num_mappings++;
@@ -2797,7 +2797,7 @@ char **SDL_GetGamepadMappings(int *count)
     } else {
         int i = 0;
         for (GamepadMapping_t *mapping = s_pSupportedGamepads; mapping; mapping = mapping->next) {
-            if (SDL_memcmp(&mapping->guid, &s_zeroGUID, sizeof(mapping->guid)) == 0) {
+            if (SDL_IsZeroGUID(&mapping->guid)) {
                 continue;
             }
 
@@ -2894,7 +2894,7 @@ bool SDL_SetGamepadMapping(SDL_JoystickID instance_id, const char *mapping)
     SDL_GUID guid = SDL_GetJoystickGUIDForID(instance_id);
     bool result = false;
 
-    CHECK_PARAM(SDL_memcmp(&guid, &s_zeroGUID, sizeof(guid)) == 0) {
+    CHECK_PARAM(SDL_IsZeroGUID(&guid)) {
         return SDL_InvalidParamError("instance_id");
     }
 

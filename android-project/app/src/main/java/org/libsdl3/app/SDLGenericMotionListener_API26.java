@@ -1,11 +1,13 @@
 package org.libsdl3.app;
 
+import android.annotation.SuppressLint;
 import android.os.Build;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 
-public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API24 {
+@SuppressLint("NewApi") // prevent lint Error: Class requires API level 26 (current min is 21): android.view.View.OnCapturedPointerListener [NewApi]
+public class SDLGenericMotionListener_API26 extends SDLGenericMotionListener_API24 implements View.OnCapturedPointerListener {
     // Generic Motion (mouse hover, joystick...) events go here
     private boolean mRelativeModeEnabled;
 
