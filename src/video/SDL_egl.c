@@ -1069,9 +1069,19 @@ SDL_GLContext SDL_EGL_CreateContext(SDL_VideoDevice *_this, EGLSurface egl_surfa
     }
 #endif
 
+    /* EGL_KHR_create_context defines the robust access flag for desktop OpenGL only (an OpenGL ES
+     * context may be refused with it); OpenGL ES gets robust buffer access through
+     * EGL_EXT_create_context_robustness, added after all other attributes below. */
+    EGLint context_flags = _this->gl_config.flags;
+    bool robust_es = false;
+    if (profile_es && (context_flags & SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG)) {
+        context_flags &= ~SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
+        robust_es = SDL_EGL_HasExtension(_this, SDL_EGL_DISPLAY_EXTENSION, "EGL_EXT_create_context_robustness");
+    }
+
     // Set the context version and other attributes.
     if ((major_version < 3 || (minor_version == 0 && profile_es)) &&
-        _this->gl_config.flags == 0 &&
+        context_flags == 0 &&
         (profile_mask == 0 || profile_es)) {
         /* Create a context without using EGL_KHR_create_context attribs.
          * When creating a GLES context without EGL_KHR_create_context we can
@@ -1101,9 +1111,9 @@ SDL_GLContext SDL_EGL_CreateContext(SDL_VideoDevice *_this, EGLSurface egl_surfa
             }
 
             // SDL flags match EGL flags.
-            if (_this->gl_config.flags != 0) {
+            if (context_flags != 0) {
                 attribs[attr++] = EGL_CONTEXT_FLAGS_KHR;
-                attribs[attr++] = _this->gl_config.flags;
+                attribs[attr++] = context_flags;
             }
         } else
 #endif // EGL_KHR_create_context
@@ -1146,6 +1156,16 @@ SDL_GLContext SDL_EGL_CreateContext(SDL_VideoDevice *_this, EGLSurface egl_surfa
         SDL_free(userAttribs);
     }
 
+    // Last, so that the context can be created again without it if the driver refuses it.
+    int robust_attr = -1;
+#ifdef EGL_EXT_create_context_robustness
+    if (robust_es && attr + 3 <= (int)SDL_arraysize(attribs)) {
+        robust_attr = attr;
+        attribs[attr++] = EGL_CONTEXT_OPENGL_ROBUST_ACCESS_EXT;
+        attribs[attr++] = EGL_TRUE;
+    }
+#endif
+
     attribs[attr++] = EGL_NONE;
 
     // Bind the API
@@ -1162,6 +1182,14 @@ SDL_GLContext SDL_EGL_CreateContext(SDL_VideoDevice *_this, EGLSurface egl_surfa
     egl_context = _this->egl_data->eglCreateContext(_this->egl_data->egl_display,
                                                     _this->egl_data->egl_config,
                                                     share_context, attribs);
+
+    if (egl_context == EGL_NO_CONTEXT && robust_attr >= 0) {
+        // Robust buffer access is a request, not a requirement: a context without it.
+        attribs[robust_attr] = EGL_NONE;
+        egl_context = _this->egl_data->eglCreateContext(_this->egl_data->egl_display,
+                                                        _this->egl_data->egl_config,
+                                                        share_context, attribs);
+    }
 
     if (egl_context == EGL_NO_CONTEXT) {
         SDL_EGL_SetError("Could not create EGL context", "eglCreateContext");
