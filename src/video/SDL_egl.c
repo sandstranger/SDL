@@ -44,6 +44,39 @@
 #include "SDL_egl_c.h"
 #include "../SDL_hints_c.h"
 
+#ifdef SDL_VIDEO_DRIVER_ANDROID
+#include <stdio.h>
+
+/* Graphics debuggers and capture tools (RenderDoc, Android GPU Inspector, Arm Graphics Analyzer, Mali
+ * Graphics Debugger) are GLES layers or interceptors loaded into the process: their libraries show up in its
+ * memory map. They create an OpenGL ES context of their own that shares objects with the application's one
+ * and has no robustness attributes; a driver may refuse such sharing with a robust context (EGL_BAD_MATCH on
+ * Mali), and the tool then runs its capture code without a context (RenderDoc crashes in the swap that ends
+ * the capture). */
+static bool SDL_EGL_GraphicsDebuggerLoaded(void)
+{
+    static int loaded = -1;
+    if (loaded < 0) {
+        static const char *const markers[] = { "renderdoc", "libgapii", "/libaga.so", "/libmgd.so" };
+        FILE *maps = fopen("/proc/self/maps", "re");
+        loaded = 0;
+        if (maps) {
+            char line[1024];
+            while (!loaded && fgets(line, sizeof(line), maps)) {
+                for (size_t i = 0; i < SDL_arraysize(markers); ++i) {
+                    if (SDL_strcasestr(line, markers[i])) {
+                        loaded = 1;
+                        break;
+                    }
+                }
+            }
+            fclose(maps);
+        }
+    }
+    return loaded == 1;
+}
+#endif
+
 #ifdef EGL_KHR_create_context
 // EGL_OPENGL_ES3_BIT_KHR was added in version 13 of the extension.
 #ifndef EGL_OPENGL_ES3_BIT_KHR
@@ -1077,6 +1110,13 @@ SDL_GLContext SDL_EGL_CreateContext(SDL_VideoDevice *_this, EGLSurface egl_surfa
     if (profile_es && (context_flags & SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG)) {
         context_flags &= ~SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
         robust_es = SDL_EGL_HasExtension(_this, SDL_EGL_DISPLAY_EXTENSION, "EGL_EXT_create_context_robustness");
+#ifdef SDL_VIDEO_DRIVER_ANDROID
+        // A capture tool's shared context has no robustness: a robust context here would make it refused.
+        if (robust_es && SDL_EGL_GraphicsDebuggerLoaded()) {
+            SDL_Log("EGL: graphics debugger in the process, OpenGL ES context created without robust buffer access");
+            robust_es = false;
+        }
+#endif
     }
 
     // Set the context version and other attributes.
