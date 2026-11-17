@@ -40,6 +40,7 @@
 #if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 // Needed for checking for input remapping programs
 #include "../core/windows/SDL_windows.h"
+#include "../core/windows/SDL_hid.h"
 
 #undef UNICODE // We want ASCII functions
 #include <tlhelp32.h>
@@ -322,8 +323,9 @@ static Uint32 initial_arcadestick_devices[] = {
     MAKE_VIDPID(0x0f0d, 0x0063), // Hori Real Arcade Pro Hayabusa (USA) Xbox One
     MAKE_VIDPID(0x0f0d, 0x006a), // Real Arcade Pro 4
     MAKE_VIDPID(0x0f0d, 0x0078), // Hori Real Arcade Pro V Kai Xbox One
-    MAKE_VIDPID(0x0f0d, 0x008a), // HORI Real Arcade Pro 4
-    MAKE_VIDPID(0x0f0d, 0x008c), // Hori Real Arcade Pro 4
+    MAKE_VIDPID(0x0f0d, 0x008a), // Hori Real Arcade Pro 4 in PS4 Mode
+    MAKE_VIDPID(0x0f0d, 0x008b), // Hori Real Arcade Pro 4 in PS3 Mode
+    MAKE_VIDPID(0x0f0d, 0x008c), // Hori Real Arcade Pro 4 in PC Mode
     MAKE_VIDPID(0x0f0d, 0x00aa), // HORI Real Arcade Pro V Hayabusa in Switch Mode
     MAKE_VIDPID(0x0f0d, 0x00ed), // Hori Fighting Stick mini 4 kai
     MAKE_VIDPID(0x0f0d, 0x011c), // Hori Fighting Stick Alpha in PS4 Mode
@@ -566,6 +568,7 @@ static SDL_vidpid_list throttle_devices = {
 
 static Uint32 initial_wheel_devices[] = {
     MAKE_VIDPID(0x0079, 0x1864), // DragonRise Inc. Wired Wheel (active mode) (also known as PXN V900 (PS3), Superdrive SV-750, or a Genesis Seaborg 400)
+    MAKE_VIDPID(0x044f, 0xb655), // ThrustMaster FGT Rumble 3-in-1 (PC/PS3 mode)
     MAKE_VIDPID(0x044f, 0xb65d), // Thrustmaster Wheel FFB
     MAKE_VIDPID(0x044f, 0xb65e), // Thrustmaster T500RS
     MAKE_VIDPID(0x044f, 0xb664), // Thrustmaster TX (initial mode)
@@ -646,23 +649,24 @@ static SDL_vidpid_list wheel_devices = {
 };
 
 static Uint32 initial_guitar_devices[] = {
-    MAKE_VIDPID(0x12ba, 0x0100), // PS3 Guitar Hero Guitar
-    MAKE_VIDPID(0x12ba, 0x0200), // PS3 Rock Band Guitar
-    MAKE_VIDPID(0x12ba, 0x074b), // PS3 / Wii U Guitar Hero Live Guitar
-    MAKE_VIDPID(0x1BAD, 0x0004), // Wii RB1 Guitar (Uses PS3 protocol)
-    MAKE_VIDPID(0x1BAD, 0x3010), // Wii RB2 Guitar (Uses PS3 protocol)
     MAKE_VIDPID(0x0351, 0x1000), // CRKD Guitar
     MAKE_VIDPID(0x0351, 0x2000), // CRKD Guitar
     MAKE_VIDPID(0x0738, 0x02A6), // Mad Catz Wireless Rock Band Guitar
     MAKE_VIDPID(0x0738, 0x02AB), // Mad Catz Wireless Precision Bass Guitar
     MAKE_VIDPID(0x0738, 0x9806), // Mad Catz Precision Bass Guitar
+    MAKE_VIDPID(0x12ba, 0x0100), // PS3 Guitar Hero Guitar
+    MAKE_VIDPID(0x12ba, 0x0200), // PS3 Rock Band Guitar
+    MAKE_VIDPID(0x12ba, 0x074b), // PS3 / Wii U Guitar Hero Live Guitar
     MAKE_VIDPID(0x1430, 0x02a7), // Guitar Hero Wireless Guitar (Linux)
     MAKE_VIDPID(0x1430, 0x0705), // Guitar Hero 5 Guitar
     MAKE_VIDPID(0x1430, 0x070B), // Guitar Hero Live Guitar
     MAKE_VIDPID(0x1430, 0x4734), // Guitar Hero World Tour Kiosk
     MAKE_VIDPID(0x1430, 0x4748), // RedOctane Guitar Hero X-plorer
+    MAKE_VIDPID(0x1bad, 0x0004), // Wii RB1 Guitar (Uses PS3 protocol)
     MAKE_VIDPID(0x1bad, 0x02a6), // Rock Band 2 Wireless Guitar (Linux)
     MAKE_VIDPID(0x1bad, 0x02ab), // Rock Band Wireless Bass Guitar (Linux)
+    MAKE_VIDPID(0x1bad, 0x3010), // Wii RB2 Guitar (Uses PS3 protocol)
+    MAKE_VIDPID(0x1ccf, 0x1030), // Konami GITADORA Guitar Controller Premium Model
     MAKE_VIDPID(0x2068, 0x0001), // Power Gig Guitar
     MAKE_VIDPID(0x3651, 0x1000), // CRKD Guitar
     MAKE_VIDPID(0x3651, 0x6000), // CRKD Guitar
@@ -4031,6 +4035,13 @@ SDL_GUID SDL_CreateJoystickGUIDForName(const char *name)
     return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_UNKNOWN, 0, 0, 0, NULL, name, 0, 0);
 }
 
+void SDL_SetJoystickGUIDBus(SDL_GUID *guid, Uint16 bus)
+{
+    Uint16 *guid16 = (Uint16 *)guid->data;
+
+    guid16[0] = SDL_Swap16LE(bus);
+}
+
 void SDL_SetJoystickGUIDVendor(SDL_GUID *guid, Uint16 vendor)
 {
     Uint16 *guid16 = (Uint16 *)guid->data;
@@ -4213,6 +4224,14 @@ bool SDL_IsXInputDevice(Uint16 vendor_id, Uint16 product_id, const char *path)
     if (path && SDL_strcasestr(path, "{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}") != NULL) {
         return true;
     }
+
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
+    // If the xinputhid filter driver is loaded then it's an XInput device, e.g. Xbox controllers
+    // over Bluetooth and third party XInputHID controllers. These don't have "IG_" in the path.
+    if (WIN_IsXInputHIDInterfacePath(path)) {
+        return true;
+    }
+#endif
 
     type = SDL_GetGamepadTypeFromVIDPID(vendor_id, product_id, NULL, false);
     if (type == SDL_GAMEPAD_TYPE_XBOX360 ||

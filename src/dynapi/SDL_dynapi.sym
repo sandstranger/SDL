@@ -1326,6 +1326,9 @@ SDL3_0.0.0 {
     SDL_EncodeURL;
     SDL_SetRenderHDRHeadroom;
     SDL_GetRenderHDRHeadroom;
+    SDL_GetCurrentThreadName;
+    SDL_LoadTexture_IO;
+    SDL_LoadTexture;
     # extra symbols go here (don't modify this line)
   local: *;
 };

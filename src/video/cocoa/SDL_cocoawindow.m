@@ -826,6 +826,15 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
     pendingWindowWarpX = pendingWindowWarpY = FLT_MAX;
     liveResizeTimer = nil;
 
+    const NSTimeInterval interval = 1.0 / 60.0;
+    moveTimer = [NSTimer timerWithTimeInterval:interval
+                                       repeats:TRUE
+                                         block:^(NSTimer *unusedTimer)
+    {
+        SDL_OnWindowLiveResizeUpdate(self->_data.window);
+    }];
+    [[NSRunLoop currentRunLoop] addTimer:moveTimer forMode:@"_NSMoveTimerRunLoopMode"];
+
     center = [NSNotificationCenter defaultCenter];
 
     if ([window delegate] != nil) {
@@ -987,6 +996,11 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
     NSNotificationCenter *center;
     NSWindow *window = _data.nswindow;
     NSView *view = [window contentView];
+
+    [liveResizeTimer invalidate];
+    liveResizeTimer = nil;
+    [moveTimer invalidate];
+    moveTimer = nil;
 
     center = [NSNotificationCenter defaultCenter];
 
@@ -2495,7 +2509,7 @@ bool Cocoa_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properti
             rect.origin.y -= screenRect.origin.y;
 
             // Constrain the popup
-            if (SDL_WINDOW_IS_POPUP(window) && window->constrain_popup) {
+            if (SDL_WINDOW_IS_POPUP(window) && window->constrain_popup && screen) {
                 if (rect.origin.x + rect.size.width > screenRect.origin.x + screenRect.size.width) {
                     rect.origin.x -= (rect.origin.x + rect.size.width) - (screenRect.origin.x + screenRect.size.width);
                 }
@@ -2561,7 +2575,7 @@ bool Cocoa_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properti
             _this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) {
             [nsview setWantsLayer:TRUE];
             if ((window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY)) {
-                nsview.layer.contentsScale = nswindow.screen.backingScaleFactor;
+                nsview.layer.contentsScale = nswindow.backingScaleFactor;
             } else {
                 nsview.layer.contentsScale = 1;
             }

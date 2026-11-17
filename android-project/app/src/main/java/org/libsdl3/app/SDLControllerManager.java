@@ -329,6 +329,12 @@ class SDLJoystickHandler {
         }
     }
 
+    boolean deviceIsUnnamedQuestController(InputDevice joystickDevice) {
+        return Build.VERSION.SDK_INT >= 29 && 
+            Build.MANUFACTURER.equals("Oculus") && Build.MODEL.startsWith("Quest") && 
+            joystickDevice.getName().startsWith("Device 0x");
+    }
+
     void deviceAdded(int device_id) {
         InputDevice joystickDevice = InputDevice.getDevice(device_id);
         if (joystickDevice == null ) {
@@ -337,6 +343,14 @@ class SDLJoystickHandler {
 
         SDLJoystick joystick = getJoystick(device_id);
         if (joystick == null) {
+
+            if (deviceIsUnnamedQuestController(joystickDevice)) {
+                if (!joystickDevice.isExternal() && (joystickDevice.getSources() & InputDevice.SOURCE_GAMEPAD) == 0) {
+                    // This is the Quest's dummy controller, which we want to ignore.
+                    return;
+                }
+            }
+
             joystick = new SDLJoystick();
             joystick.device_id = device_id;
             joystick.name = getJoystickName(joystickDevice);
@@ -348,7 +362,16 @@ class SDLJoystickHandler {
 
             List<InputDevice.MotionRange> ranges = joystickDevice.getMotionRanges();
             Collections.sort(ranges, new RangeComparator());
+
+            // TV remotes can have generic axes for their extra buttons, which makes them look like
+            // joysticks. Leave those axes out so the remote is just a D-pad and buttons, which lets
+            // SDL_HINT_TV_REMOTE_AS_JOYSTICK recognize it.
+            boolean isTVRemote = deviceIsTVRemote(joystickDevice, ranges);
+
             for (InputDevice.MotionRange range : ranges) {
+                if (isTVRemote && isGenericAxis(range.getAxis())) {
+                    continue;
+                }
                 if (((range.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) && axisStrsSet.add(range.getAxis())) {
                     if (range.getAxis() == MotionEvent.AXIS_HAT_X || range.getAxis() == MotionEvent.AXIS_HAT_Y) {
                         joystick.hats.add(range);
@@ -487,6 +510,12 @@ class SDLJoystickHandler {
                     return name.substring(0, name.length() - suffix.length());
                 }
             }
+
+            if (deviceIsUnnamedQuestController(joystickDevice)) {
+                if (joystickDevice.isExternal()) {
+                    return "Touch Controller Gamepad Mode";
+                }
+            }
         }
         return name;
     }
@@ -507,6 +536,27 @@ class SDLJoystickHandler {
 
     int getVendorId(InputDevice joystickDevice) {
         return joystickDevice.getVendorId();
+    }
+
+    static boolean isGenericAxis(int axis) {
+        return (axis >= MotionEvent.AXIS_GENERIC_1 && axis <= MotionEvent.AXIS_GENERIC_16);
+    }
+
+    // A TV remote has a D-pad but isn't a gamepad, and has no real joystick axes
+    static boolean deviceIsTVRemote(InputDevice device, List<InputDevice.MotionRange> ranges) {
+        int sources = device.getSources();
+        if ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD) {
+            return false;
+        }
+        if ((sources & InputDevice.SOURCE_DPAD) != InputDevice.SOURCE_DPAD) {
+            return false;
+        }
+        for (InputDevice.MotionRange range : ranges) {
+            if ((range.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0 && !isGenericAxis(range.getAxis())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     int getAxisMask(List<InputDevice.MotionRange> ranges) {
