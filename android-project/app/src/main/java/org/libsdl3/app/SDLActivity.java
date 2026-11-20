@@ -1514,13 +1514,6 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
     }
 
     static class ShowTextInputTask implements Runnable {
-        /*
-         * This is used to regulate the pan&scan method to have some offset from
-         * the bottom edge of the input region and the top edge of an input
-         * method (soft keyboard)
-         */
-        static final int HEIGHT_PADDING = 15;
-
         public int input_type;
         public int x, y, w, h;
 
@@ -1534,21 +1527,19 @@ public class SDLActivity extends AppCompatActivity implements View.OnSystemUiVis
             if (this.w <= 0) {
                 this.w = 1;
             }
-            if (this.h + HEIGHT_PADDING <= 0) {
-                this.h = 1 - HEIGHT_PADDING;
+            if (this.h <= 0) {
+                this.h = 1;
             }
         }
 
         @Override
         public void run() {
             if (useStandardSDLInput && mLayout != null) {
-                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
-                params.leftMargin = x;
-                params.topMargin = y;
-
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h);
+            params.leftMargin = x;
+            params.topMargin = y;
                 if (mTextEdit == null) {
                     mTextEdit = new SDLDummyEdit(getContext());
-
                     mLayout.addView(mTextEdit, params);
                 } else {
                     mTextEdit.setLayoutParams(params);

@@ -1329,6 +1329,8 @@ SDL3_0.0.0 {
     SDL_GetCurrentThreadName;
     SDL_LoadTexture_IO;
     SDL_LoadTexture;
+    SDL_GetCachePath;
+    SDL_SetRenderLogicalPresentationRect;
     # extra symbols go here (don't modify this line)
   local: *;
 };

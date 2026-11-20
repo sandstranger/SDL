@@ -1355,3 +1355,5 @@
 #define SDL_GetCurrentThreadName SDL_GetCurrentThreadName_REAL
 #define SDL_LoadTexture_IO SDL_LoadTexture_IO_REAL
 #define SDL_LoadTexture SDL_LoadTexture_REAL
+#define SDL_GetCachePath SDL_GetCachePath_REAL
+#define SDL_SetRenderLogicalPresentationRect SDL_SetRenderLogicalPresentationRect_REAL

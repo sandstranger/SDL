@@ -798,6 +798,34 @@ extern "C" {
 #define SDL_HINT_FILE_DIALOG_DRIVER "SDL_FILE_DIALOG_DRIVER"
 
 /**
+ * A variable that controls whether D-Bus portal interfaces are preferred over
+ * non-portal interfaces.
+ *
+ * Some functionality in SDL (screensaver inhibition and notifications) uses
+ * D-Bus interfaces that have both a portal, and non-portal interface. When
+ * not running in a secure sandbox, SDL will first attempt to use the
+ * non-portal interface, then fall back to the portal interface if the former
+ * is unavailable. In a known secure sandbox environment, such as Flatpak or
+ * Snap, SDL will first attempt to use the portal interface. When enabled,
+ * this hint forces SDL to attempt using the portal interface first, even when
+ * not running in a known secure sandbox environment.
+ *
+ * This is intended for debugging, and should not be enabled by default in
+ * shipping applications and games.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": The appropriate interface will be auto-detected (default)
+ * - "1": Portal interfaces will be preferred, even when not running in a
+ *   secure sandbox
+ *
+ * This hint should be set before SDL is initialized.
+ *
+ * \since This hint is available since SDL 3.6.0.
+ */
+#define SDL_HINT_DBUS_PREFER_PORTALS "SDL_DBUS_PREFER_PORTALS"
+
+/**
  * Override for SDL_GetDisplayUsableBounds().
  *
  * If set, this hint will override the expected results for
@@ -3732,6 +3760,24 @@ extern "C" {
 #define SDL_HINT_STORAGE_USER_DRIVER "SDL_STORAGE_USER_DRIVER"
 
 /**
+ * A variable controlling the spacing between the on-screen keyboard and text
+ * input areas.
+ *
+ * This is the space, in window coordinates, to keep between the bottom of the
+ * text input area and the top of the on-screen keyboard when the view is
+ * moved to keep the text input area visible. This defaults to 0.
+ *
+ * This hint sets the default value of
+ * SDL_PROP_TEXTINPUT_KEYBOARD_MARGIN_NUMBER.
+ *
+ * This hint should be set before calling SDL_StartTextInput() or
+ * SDL_StartTextInputWithProperties().
+ *
+ * \since This hint is available since SDL 3.6.0.
+ */
+#define SDL_HINT_TEXTINPUT_KEYBOARD_MARGIN "SDL_TEXTINPUT_KEYBOARD_MARGIN"
+
+/**
  * Specifies whether SDL_THREAD_PRIORITY_TIME_CRITICAL should be treated as
  * realtime.
  *
@@ -3962,6 +4008,30 @@ extern "C" {
  * \since This hint is available since SDL 3.2.0.
  */
 #define SDL_HINT_VIDEO_EGL_ALLOW_GETDISPLAY_FALLBACK "SDL_VIDEO_EGL_ALLOW_GETDISPLAY_FALLBACK"
+
+/**
+ * Let EGL use more specific swapinterval hints.
+ *
+ * This hint is only used if the video subsystem is using EGL for OpenGL
+ * context management, and the EGL context supports the
+ * EGL_EXT_swap_tearing_hint extension. This lets the app specify the value
+ * for EGL_SWAP_TEARING_HINT_EXT in addition to the normal swap interval
+ * value.
+ *
+ * Most apps should not set this hint. SDL will do the normal thing with
+ * standard calls to SDL_GL_SetSwapInterval by default.
+ *
+ * The variable can be set to one of the following values:
+ *
+ * - "async": Use EGL_SWAP_TEARING_HINT_ASYNC_EXT.
+ * - "vsync": Use EGL_SWAP_TEARING_HINT_VSYNC_EXT.
+ * - "default": Use EGL_SWAP_TEARING_HINT_DEFAULT_EXT.
+ *
+ * This hint should be set before calling SDL_GL_SetSwapInterval.
+ *
+ * \since This hint is available since SDL 3.6.0.
+ */
+#define SDL_HINT_VIDEO_EGL_SWAP_TEARING_HINT "SDL_VIDEO_EGL_SWAP_TEARING_HINT"
 
 /**
  * A variable controlling whether the OpenGL context should be created with
